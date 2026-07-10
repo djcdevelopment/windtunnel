@@ -41,6 +41,8 @@ corrected it, explained it, then caught its own measurement bias. All on idle lo
 - [Round 5 — over-refinement is a prompt artifact](#round-5--the-over-refinement-collapse-is-a-prompt-artifact-not-a-law)
 - [Round 6 — the judge was a confound](#round-6--the-judge-was-a-confound-the-effect-is-real-but-smaller)
 - [What this changes](#what-this-changes)
+- [Crossover — autoreason bilevel (PR #2)](#crossover--autoreason-bilevel-outer-loop-pr-2)
+  · [recommendations & experiment plan](RECOMMENDATIONS.html)
 - [Open threads](#open-threads)
 
 ## What we built (the instrument)
@@ -190,6 +192,52 @@ multi-rubric judging, or the scores measure the ruler as much as the work.
   with LLMs.
 - The matrix earned its keep four times: found an effect → corrected it → explained it → caught its own
   measurement bias. That last step is the one most experiments skip.
+
+## Crossover — autoreason bilevel outer loop (PR #2)
+
+[NousResearch/autoreason PR #2](https://github.com/NousResearch/autoreason/pull/2) adds a **deterministic
+outer loop** that reads a tournament trace, diagnoses one of six failure signatures with a rule-based
+classifier (*no LLM at the diagnosis step*), applies a mechanism change, and keeps it only if it passes a
+**quality gate** and reduces rounds-to-converge. That gate is *judged* — and this repo is, in effect, a
+controlled study of the one thing it depends on: the judge. Our Round 6 result (a single rubric inflated every
+effect ~3×) is direct empirical backing for the PR's "diversify judge lenses" mechanism, and it **sizes** the
+gate.
+
+Four artifacts, all in this repo:
+
+- **[AUTOREASON-CROSSOVER.html](AUTOREASON-CROSSOVER.html)** — the map: his six signatures × our evidence, his
+  mechanism library × our *measured* deltas, and his gate × our judge-robustness math. Where his interests land
+  on our data.
+- **[apparatus/](apparatus/)** — a runnable, stdlib-only apparatus that executes the *diagnosis step* of his
+  outer loop over our Rounds 5–6 trace. Deterministic, zero tokens (his thesis and our two-economies doctrine).
+  `python run_apparatus.py`.
+- **[APPARATUS-PROOF.html](APPARATUS-PROOF.html)** — the proof: real console output (14/14 tests, one diagnosis
+  pass), byte-for-byte.
+- **[RECOMMENDATIONS.html](RECOMMENDATIONS.html)** — six recommendations ranked by how much data backs each,
+  every one carrying its evidence, its open confound, and the exact (mostly idle-hardware, zero-regeneration)
+  experiment that would decide it — plus the data-collection plan.
+
+What the apparatus computes on our trace:
+
+- Our data is a **live instance of `non_convergence`** (critic converged on 0/12 cells) and of `judge_herding`
+  (the completeness lens can't separate arms — spread 1.3 pts).
+- Two of his mechanisms are measured here: **cap laps** is nearly free (~87–92 flat under a fair judge), and
+  **escalate critic difficulty** *backfired* (our `thorough-critic` arm was the worst). Plus a lever his library
+  lacks — the **concise author prompt** (+2.8, fair judge).
+- **Gate sizing (the load-bearing bit):** a single lens inflates the concise-author effect **2.86×**, the
+  completeness lens **flips its sign**, and resolving the real +2.8 against 4.15-pt between-lens noise needs
+  **≈9 lens-diverse votes**. `--gate-votes 1` has a one-in-three chance of reverting a genuine gain.
+
+**Recommendations** (full version in [RECOMMENDATIONS.html](RECOMMENDATIONS.html), with the data behind each):
+the headline, data-backed message is *don't ship a 1-vote gate* — a single rubric lens flips the sign of a real
+effect, and per-cell rubric disagreement runs to 47 points (mean 6.5). Concise-author is not only the
+top-scoring arm but the **most judge-robust** (lowest cross-rubric spread, 2.6 pts vs baseline 9.0); escalating
+critic difficulty is the **least** robust (10.8). The two highest-value follow-ups — measuring the real
+gate-vote count and whether model- or rubric-diversity is the bigger lever — cost **zero generation** (re-score
+outputs we already have on idle compute).
+
+The joint experiment this sets up: wire his `run_bilevel.py` outer loop over a wind-tunnel inner tournament on
+idle B70/OMEN and produce the empirical benefit the PR flags as missing ("✗ Empirical benefit unproven").
 
 ## Open threads
 

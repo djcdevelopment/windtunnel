@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Autoreason × Wind-Tunnel — Crossover Map</title>
+<style>
+  :root{--bg:#0f1115;--panel:#171a21;--panel2:#1d2130;--ink:#d8dee9;--dim:#8b95a7;
+        --accent:#e8a33d;--green:#7fbf7f;--red:#d97b7b;--blue:#6fa8dc;--border:#2a2f3a}
+  *{box-sizing:border-box}
+  body{background:var(--bg);color:var(--ink);font:15px/1.55 "Segoe UI",system-ui,sans-serif;margin:0;padding:2rem;max-width:1080px;margin-inline:auto}
+  h1{color:var(--accent);font-size:1.7rem;border-bottom:2px solid var(--accent);padding-bottom:.4rem;margin-bottom:.2rem}
+  h2{color:var(--blue);font-size:1.2rem;margin-top:2.2rem;border-bottom:1px solid var(--border);padding-bottom:.3rem}
+  h3{color:var(--ink);font-size:1.02rem;margin-bottom:.3rem}
+  a{color:var(--blue)}
+  .meta{color:var(--dim);font-size:.85rem}
+  .panel{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:1rem 1.3rem;margin:1rem 0}
+  .finding{border-left:4px solid var(--accent)}
+  .live{border-left:4px solid var(--green)}
+  code{font-family:Consolas,monospace;background:var(--panel2);border-radius:4px;padding:.1em .35em;font-size:.88em}
+  table{border-collapse:collapse;width:100%;font-size:.88rem;margin:.7rem 0}
+  th,td{border:1px solid var(--border);padding:.4rem .6rem;text-align:left;vertical-align:top}
+  th{background:var(--panel2);color:var(--blue)}
+  td.n{text-align:right;font-variant-numeric:tabular-nums}
+  .up{color:var(--green)} .down{color:var(--red)}
+  .tag{display:inline-block;padding:.05rem .5rem;border-radius:10px;font-size:.72rem;font-weight:600}
+  .t-direct{background:#2a3d2a;color:var(--green)} .t-partial{background:#3d362a;color:var(--accent)} .t-gap{background:#33323a;color:var(--dim)}
+  ul{margin:.4rem 0}
+  .why{color:var(--dim);font-style:italic}
+</style>
+</head>
+<body>
+
+<h1>Autoreason × Wind-Tunnel — Crossover Map</h1>
+<p class="meta">Companion note · 2026-07-10 · what in the Matrix Wind-Tunnel speaks to
+<a href="https://github.com/NousResearch/autoreason/pull/2">NousResearch/autoreason PR #2</a>
+("bilevel autoreason: an outer meta-loop that adapts the inner loop's search procedure between runs",
+<span class="mono">@thedavidmurray</span>). Highlights the PR's interest areas against our six rounds of
+idle-hardware data, and hands over the calibration.</p>
+
+<div class="panel" style="border-left:4px solid var(--green)">
+<h3 style="margin-top:0;color:var(--green)">One-paragraph version</h3>
+<p>The bilevel PR builds a <strong>deterministic outer loop</strong> that reads a tournament trace,
+diagnoses one of six failure signatures with a rule-based classifier (<em>no LLM at the diagnosis step</em>),
+applies a mechanism change, and keeps it only if it passes a <strong>quality gate</strong> and reduces
+rounds-to-converge. The wind-tunnel is, in effect, a controlled study of the one thing that gate depends on
+and treats as reliable: <strong>the judge</strong>. Our headline result — a single judge rubric
+<strong>inflated every effect ~3×</strong> and could flip a decision's sign — is direct empirical backing for
+the PR's "diversify judge lenses" mechanism, and it <em>sizes</em> the gate: on our numbers a 1-vote gate is
+hopeless. Below: his six signatures against our data, his mechanism library against our measured deltas, and
+the gate math. The runnable apparatus that produced these numbers is in
+<a href="apparatus/">apparatus/</a>; the proof run is <a href="APPARATUS-PROOF.html">APPARATUS-PROOF.html</a>.</p>
+</div>
+
+<h2>1 · His thesis is our doctrine</h2>
+<div class="panel finding">
+<p>The PR narrows to a <em>deterministic</em> diagnosis "rather than generative LLM-based mechanisms
+<strong>for auditability and cost efficiency</strong>" — no model call in the outer loop. That is the
+wind-tunnel's <strong>two-economies doctrine</strong> almost verbatim: run the cheap, sunk-compute controller
+on idle local hardware; reserve metered frontier tokens for the inner generation that actually needs them.</p>
+<ul>
+<li>His outer loop = <strong>Economy 2</strong> (sunk, marginal cost ≈ 0). His inner tournament = the metered leg.</li>
+<li>His "cost efficiency" is an <em>asserted</em> motivation with no benchmark yet. Measuring
+<strong>knowledge-per-local-hour</strong> is exactly what the wind-tunnel is built to do — so we can turn his
+motivation into a number.</li>
+</ul>
+</div>
+
+<h2>2 · His six signatures × our evidence</h2>
+<p>The PR's classifier routes a trace into one of six bottleneck signatures. Our runs are a live instance of
+several of them — and quantify two that are pure judge pathologies.</p>
+<table>
+<tr><th>autoreason signature</th><th>fit</th><th>what the wind-tunnel saw</th></tr>
+<tr>
+  <td><strong>non_convergence</strong></td>
+  <td><span class="tag t-direct">DIRECT</span></td>
+  <td>Critic emitted <code>VERDICT: CONVERGED</code> on <strong>0/12</strong> pilot cells; every cell burned its
+  full lap budget. Our trace <em>is</em> this signature. Finding: the lap <strong>cap</strong>, not
+  convergence, is the real control knob.</td>
+</tr>
+<tr>
+  <td><strong>judge_herding</strong></td>
+  <td><span class="tag t-direct">DIRECT + CALIBRATED</span></td>
+  <td>Re-judged 192 finals under 3 rubrics. The <strong>completeness lens herds</strong> — arm spread
+  collapses to 1.3 pts, it can't tell the arms apart. Default over-separates (9.9); neutral sits at 2.9. We can
+  hand over the base rates.</td>
+</tr>
+<tr>
+  <td><strong>oscillation</strong></td>
+  <td><span class="tag t-partial">PARTIAL</span></td>
+  <td>baseline (default judge) goes 85.2 / 84.2 / 84.3 / <span class="down">74.5</span> — a blip then a cliff.
+  Under the neutral judge the same series is a mild −3.7 drift, no cliff: <em>much of the "bounce" was the
+  judge, not the loop.</em></td>
+</tr>
+<tr>
+  <td><strong>position_bias</strong></td>
+  <td><span class="tag t-gap">NEEDS A BUILD</span></td>
+  <td>Not applicable yet: our judge scores each response <strong>absolutely</strong> (0–100, one at a time) —
+  there is no A/B position to bias. autoreason's tournament is pairwise, where it's real. Studying it here needs
+  a <strong>pairwise-judge mode</strong> added first (our ordering axis swaps the planner/critic <em>model</em>,
+  a different, model-confounded thing).</td>
+</tr>
+<tr>
+  <td><strong>premature_convergence</strong></td>
+  <td><span class="tag t-gap">OPPOSITE</span></td>
+  <td>Didn't fire — we never converged at all (the opposite failure). Honest: our loop's problem is too many
+  laps, not too few.</td>
+</tr>
+<tr>
+  <td><strong>candidate_collapse</strong></td>
+  <td><span class="tag t-gap">HIS TURF</span></td>
+  <td>Not measurable here — the wind-tunnel runs a single refine chain per cell, not a candidate population.
+  This is autoreason's home ground; a wind-tunnel population arm would be needed to light it up.</td>
+</tr>
+</table>
+<p class="why">Score: 2 of 6 direct (one with full calibration), 1 partial, 3 not-yet (one needs a pairwise-judge
+build, two are honestly out of our scope). The two direct hits — <strong>non_convergence</strong> and
+<strong>judge_herding</strong> — are the ones his classifier would fire most on a self-refinement loop, and
+they're exactly where we have data.</p>
+
+<h2>3 · His mechanism library × our measured deltas</h2>
+<p>The PR maps signatures to "concrete config deltas — escalating critic difficulty, diversifying judge lenses,
+adjusting temperature, tuning convergence thresholds." We ran two of those mechanisms and measured what they
+actually do to planning quality.</p>
+<table>
+<tr><th>mechanism (his)</th><th>wind-tunnel measurement</th></tr>
+<tr>
+  <td><strong>diversify judge lenses</strong><br>(for judge_herding)</td>
+  <td><span class="up">Backed.</span> 3 rubrics over 192 finals. The consensus (neutral) lens is the honest
+  ruler; single lenses inflate up to <strong>2.86×</strong> and one flips the sign. His instinct is right, and
+  we can hand him the calibration to set <code>--gate-votes</code>.</td>
+</tr>
+<tr>
+  <td><strong>escalate critic difficulty</strong><br>(for premature_convergence)</td>
+  <td><span class="down">Caution — measured backfire.</span> Our <code>thorough-critic</code> arm <em>is</em>
+  this mechanism (demand exhaustive coverage). It was the <strong>worst</strong> arm: 80.2 default,
+  −0.1 vs baseline even on the neutral judge. Escalating the critic degraded planning at every lap.</td>
+</tr>
+<tr>
+  <td><strong>tune convergence thresholds / cap laps</strong><br>(for non_convergence)</td>
+  <td><span class="up">Backed, and nearly free.</span> Under a fair judge, scores are flat ~87–92 across laps
+  1–4, so a hard lap cap costs ≈0 quality while bounding compute. Capping L4→L2 removes the default judge's
+  −10.7 collapse.</td>
+</tr>
+<tr>
+  <td class="dim"><em>(not in his library yet)</em><br><strong>concise author prompt</strong></td>
+  <td><span class="up">A lever to add.</span> "Shortest complete, buildable answer; lead with the decision."
+  The single robust win across all six rounds: <strong>+2.8</strong> vs baseline (neutral judge), flat-high
+  ~91 across laps 1–6, immune to over-refinement. An author-side mechanism his inner loop could adopt directly.</td>
+</tr>
+</table>
+
+<h2>4 · His gate × our judge-robustness math <span class="tag t-direct">the load-bearing contribution</span></h2>
+<div class="panel finding">
+<p>The outer loop keeps a change only if it "passes a quality gate (majority vote across
+<code>--gate-votes</code> trials), then rounds-to-converge becomes the optimization objective." That gate is
+<strong>judged</strong>. If the judge is biased, the hill-climb ascends a biased gradient. The wind-tunnel's
+Round 6 gives the gate the numbers it needs to not chase noise. For <code>concise_author</code> vs baseline:</p>
+<table>
+<tr><th>quantity</th><th>value</th><th>what it means for the gate</th></tr>
+<tr><td>effect by lens</td><td class="n">+8.0 / −0.2 / +2.8</td><td>default / completeness / neutral — same artifacts, three answers</td></tr>
+<tr><td>consensus effect</td><td class="n up">+2.8</td><td>the honest effect size (neutral lens)</td></tr>
+<tr><td>single-lens inflation</td><td class="n down">2.86×</td><td>a lucky lens exaggerates the win nearly 3×</td></tr>
+<tr><td>between-lens noise</td><td class="n">4.15 pts</td><td>&gt; the effect itself — one lens can dominate the signal</td></tr>
+<tr><td>sign-flip lenses</td><td class="n down">completeness</td><td>a 1-vote gate drawing this lens would <strong>revert a real gain</strong></td></tr>
+<tr><td>required gate votes</td><td class="n">≈ 9</td><td>to resolve +2.8 against 4.15-pt noise at ~2σ</td></tr>
+</table>
+<p><strong>The takeaway for the PR:</strong> <code>--gate-votes 1</code> (or a single lens) is not merely weak
+here — it has a one-in-three chance of <em>reverting</em> a genuine improvement. The wind-tunnel says the gate
+needs roughly <strong>a dozen lens-diverse votes</strong> before "quality passed" means anything on a
+self-refinement task with a ~3-point effect. That is the empirical floor his gate should be sized against.</p>
+</div>
+
+<h2>5 · What we can run together</h2>
+<div class="panel live">
+<ul>
+<li><strong>Supply the empirical section the PR is missing.</strong> Its own status line: "✗ Empirical benefit
+unproven; no benchmark results included." We have the harness (matrix generator, held-out judge panel,
+multi-rubric re-judge) and idle B70/OMEN compute to wire <code>run_bilevel.py</code>'s outer loop over a
+wind-tunnel inner tournament and produce that benchmark.</li>
+<li><strong>Harden his gate with our re-judge.</strong> Port the 3-rubric variance check to his quality gate;
+if effects collapse under re-judging like ours did, his rounds-to-converge signal is partly instrument noise.</li>
+<li><strong>Add a pairwise-judge mode.</strong> Our judge scores absolutely; his tournament is pairwise. A
+pairwise mode is the prerequisite to (a) test whether our mechanisms survive his scoring regime and (b) give
+his <code>position_bias</code> signature a real base rate.</li>
+<li><strong>Joint note:</strong> "The judge is the confound in self-improving LLM loops" — his control
+architecture (diversify lenses, blind pairwise gate) + our controlled measurement (~3× inflation). Two halves
+of one insight.</li>
+</ul>
+<p class="why">The apparatus in <a href="apparatus/">apparatus/</a> runs the diagnosis step of his outer loop
+over our real trace today — deterministic, zero tokens. See it working in
+<a href="APPARATUS-PROOF.html">APPARATUS-PROOF.html</a>.</p>
+</div>
+
+<p class="meta">Provenance: wind-tunnel numbers from <a href="MATRIX-WIND-TUNNEL-LOG.html">MATRIX-WIND-TUNNEL-LOG.html</a>
+Rounds 5–6 (192 finals re-judged under 3 rubrics, no regeneration). autoreason references from PR #2 as read
+2026-07-10; its inner-loop convergence signal is inferred to be judge-derived — worth confirming against the
+autoreason README before quoting. Nothing in the PR was executed to write this note.</p>
+
+</body>
+</html>

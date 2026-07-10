@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Recommendations &amp; Experiment Plan — Wind-Tunnel × Autoreason</title>
+<style>
+  :root{--bg:#0f1115;--panel:#171a21;--panel2:#1d2130;--ink:#d8dee9;--dim:#8b95a7;
+        --accent:#e8a33d;--green:#7fbf7f;--red:#d97b7b;--blue:#6fa8dc;--border:#2a2f3a}
+  *{box-sizing:border-box}
+  body{background:var(--bg);color:var(--ink);font:15px/1.55 "Segoe UI",system-ui,sans-serif;margin:0;padding:2rem;max-width:1080px;margin-inline:auto}
+  h1{color:var(--accent);font-size:1.7rem;border-bottom:2px solid var(--accent);padding-bottom:.4rem;margin-bottom:.2rem}
+  h2{color:var(--blue);font-size:1.2rem;margin-top:2.2rem;border-bottom:1px solid var(--border);padding-bottom:.3rem}
+  h3{color:var(--ink);font-size:1.04rem;margin:.1rem 0 .5rem}
+  a{color:var(--blue)}
+  .meta{color:var(--dim);font-size:.85rem}
+  .panel{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:1rem 1.3rem;margin:1rem 0}
+  .rec{border-left:4px solid var(--accent)}
+  .live{border-left:4px solid var(--green)}
+  code{font-family:Consolas,monospace;background:var(--panel2);border-radius:4px;padding:.1em .35em;font-size:.88em}
+  table{border-collapse:collapse;width:100%;font-size:.86rem;margin:.7rem 0}
+  th,td{border:1px solid var(--border);padding:.4rem .6rem;text-align:left;vertical-align:top}
+  th{background:var(--panel2);color:var(--blue)}
+  td.n{text-align:right;font-variant-numeric:tabular-nums}
+  .up{color:var(--green)} .down{color:var(--red)}
+  .tag{display:inline-block;padding:.05rem .5rem;border-radius:10px;font-size:.72rem;font-weight:600}
+  .t-strong{background:#2a3d2a;color:var(--green)} .t-dir{background:#3d362a;color:var(--accent)} .t-gap{background:#33323a;color:var(--dim)}
+  .lbl{color:var(--dim);font-weight:600;font-size:.78rem;text-transform:uppercase;letter-spacing:.03em}
+  .grid{display:grid;grid-template-columns:auto 1fr;gap:.35rem .8rem;margin:.5rem 0}
+  ul{margin:.4rem 0}
+  .why{color:var(--dim);font-style:italic}
+  .econ{font-family:Consolas,monospace;font-size:.8rem}
+</style>
+</head>
+<body>
+
+<h1>Recommendations &amp; Experiment Plan</h1>
+<p class="meta">2026-07-10 · what to do with the wind-tunnel × <a href="https://github.com/NousResearch/autoreason/pull/2">autoreason
+bilevel</a> crossover — ranked by how much data backs each call. Every recommendation carries the evidence we
+already have, what's still unknown, and the exact (mostly idle-hardware) experiment that would decide it.
+Companions: <a href="AUTOREASON-CROSSOVER.html">crossover map</a> · <a href="APPARATUS-PROOF.html">apparatus proof</a>.</p>
+
+<div class="panel" style="border-left:4px solid var(--green)">
+<h3 style="margin-top:0;color:var(--green)">How to read this</h3>
+<p>Six recommendations, three groups: <strong>the judge</strong> (how to build the gate), <strong>the
+mechanisms</strong> (what to change in the loop), and <strong>the enabling build</strong>. Each is tagged by
+confidence, and each names the experiment that closes its gap — classified by <em>economy</em> so we spend the
+right compute:</p>
+<div class="grid">
+<span class="tag t-strong">STRONG</span><span>backed by data in hand — act on it now</span>
+<span class="tag t-dir">DIRECTIONAL</span><span>real signal, one confound open — act, but verify</span>
+<span class="tag t-gap">NEEDS DATA</span><span>a hypothesis with a cheap test attached</span>
+</div>
+<p class="why" style="margin-top:.6rem">Economy tags (two-economies doctrine): <span class="econ">[FREE]</span>
+re-analysis of data we already have · <span class="econ">[IDLE-JUDGE]</span> judge-only re-scoring, no
+regeneration, runs on sunk local compute · <span class="econ">[IDLE-GEN]</span> new generation on idle
+B70/OMEN · <span class="econ">[BUILD]</span> a harness change first.</p>
+</div>
+
+<div class="panel" style="border-left:4px solid var(--accent)">
+<h3 style="margin-top:0;color:var(--accent)">Interim measured results — sweeps in progress (2026-07-10)</h3>
+<p>Experiments 1 and 2 (the two <span class="econ">[IDLE-JUDGE]</span> runs) are <strong>running now</strong> on
+idle OMEN/AM4; full numbers land ~18:30 and these preliminary reads <em>may shift</em>. Three clean signals
+already, folded into R1/R2 below:</p>
+<ul>
+<li><strong>The judge is self-consistent; the noise is which lens/model you pick.</strong> Repeat-scoring the
+same judge under the same rubric (K=6) gives a within-cell sampling std of only <strong>~1.0 pt</strong>
+(baseline arm, n=22 so far) — against ~4.6–6.5 pt disagreement <em>across</em> rubrics/models. So the gate's
+leverage is <strong>diversity, not repetition</strong>.</li>
+<li><strong>concise-author wins under a second, independent judge model.</strong> Both OMEN
+<code>qwen3-coder:30b</code> (91.2) and OMEN <code>qwen2.5:14b</code> (87.2) rank it top — the effect survives a
+model swap, not just a rubric swap (supports R3).</li>
+<li><strong>A long unattended judge sweep needs liveness/retry.</strong> The AM4 <code>oxen-planner</code> judge
+scored its first ~25 finals cleanly, then returned <strong>None for the remaining ~167</strong> — a mid-sweep
+AM4 card-0 outage, <em>not</em> a token-budget or format fault: a direct call afterward returns a clean
+<code>SCORE</code> at both 300 and 2048 tokens. Consistent with AM4's known host-RAM/eviction fragility. The
+model is a fine judge; the sweep just lacked per-node retry. (Separately — the terse 300-token "SCORE: N" format
+is worth revisiting; a reasoning judge with a real budget may calibrate better.)</li>
+</ul>
+</div>
+
+<div class="panel" style="border-left:4px solid var(--dim)">
+<h3 style="margin-top:0;color:var(--dim)">Corrections log — this is a living document</h3>
+<p class="why" style="margin-top:0">Admitting a mistake openly and pivoting on evidence is a form of credibility.
+These stay visible on purpose — the same reason the wind-tunnel log keeps its superseded findings for the honest arc.</p>
+<ul>
+<li><strong>2026-07-10 — claimed the 300-token judge budget caused the oxen-planner failure.</strong>
+<span class="down">Wrong.</span> A direct check refuted it: oxen-planner returns a clean <code>SCORE: 95</code>
+in ~9 chars at both 300 and 2048 tokens. Real cause: a mid-sweep AM4 card-0 outage (first ~25 finals clean, then
+167 None, no retry). Corrected in R2 + the banner; a retry-hardened re-run is under way to land the real 3-model
+panel. The valid residue — a terse bare-score judge may be worth replacing with a reasoning judge — is kept as an
+open thread, not discarded.</li>
+<li><strong>2026-07-10 — hypothesised cross-model disagreement would be <em>larger</em> than cross-rubric (~6.5).</strong>
+<span class="down">Falsified.</span> Measured cross-model |diff| came in at ~4.6 — comparable, slightly below. R2
+pivoted from the guess to the data, with the same-family-Qwen caveat now stated.</li>
+</ul>
+</div>
+
+<h2>Group A — the judge (how to build the gate)</h2>
+
+<div class="panel rec">
+<h3>R1 · Size the quality gate to many lens-diverse votes — a single lens is unsafe. <span class="tag t-strong">STRONG</span></h3>
+<p><span class="lbl">Backed by</span> On our 192 re-judged finals, one rubric lens <strong>flips the sign</strong>
+of a real effect (concise-author reads <span class="up">+2.8</span> under the neutral judge but
+<span class="down">−0.2</span> under completeness), and single-lens estimates inflate up to
+<strong>2.86×</strong>. New, sharper number: the <strong>per-cell</strong> disagreement across the three
+rubrics averages <strong>6.5 pts</strong> (median 7, <strong>max 47</strong>) — that is the noise a gate faces
+at the level it actually decides, per item. A 1-vote gate has a one-in-three chance of reverting a genuine gain.</p>
+<p><span class="lbl">Measured (preliminary)</span> Exp 1 now supplies the missing piece: within-judge sampling
+std is only <strong>~1.0 pt</strong> (baseline, n=22, K=6) — a single judge is nearly deterministic, so
+<em>repeat</em> votes of the same judge/rubric barely help. The real noise is lens/model choice (~4.6–6.5 pt),
+which is what the gate must average down. Reframed rule: don't spend votes on repeats — spend them on
+<strong>diverse lenses/models</strong>. The diverse-vote count to resolve a +2.8 effect against that lens noise
+lands around <strong>~9–22</strong> (final number pending the full run + the concise/baseline variance cells).</p>
+<p><span class="lbl">Experiment</span> <span class="econ">[IDLE-JUDGE]</span> re-score the same 192 finals
+<strong>K≈8×</strong> each under the neutral rubric at judge temperature &gt; 0. Decompose total variance into
+within-rubric (sampling) + between-rubric (lens). No regeneration; the harness already loops
+<code>score_proposal</code>. Half a night on OMEN.</p>
+<p><span class="lbl">Decides</span> the real <code>--gate-votes</code> count for autoreason's gate, and whether
+the dominant noise is sampling or lens choice (tells David what to spend votes on).</p>
+</div>
+
+<div class="panel rec">
+<h3>R2 · Diversify judge <em>models</em>, not just rubrics — on reliable, in-format judges. <span class="tag t-dir">DIRECTIONAL</span></h3>
+<p><span class="lbl">Backed by</span> Every prior "multi-lens" result varied the rubric on a <strong>single
+model</strong> (OMEN <code>qwen3-coder:30b</code>). The scorer already supports a multi-model panel.</p>
+<p><span class="lbl">Measured (preliminary)</span> A 2nd judge model (OMEN <code>qwen2.5:14b</code>), 132 finals so
+far: cross-<em>model</em> per-cell |diff| is <strong>~4.6 pt</strong> (median 7, max 55) — <em>comparable to,
+slightly below</em> the ~6.5-pt cross-rubric spread, <em>not</em> the larger figure I'd guessed. So for
+same-family Qwen judges, model diversity ≈ rubric diversity — both matter, neither dominates — and both models
+rank concise-author top. The caveat that became a finding: the AM4 <code>oxen-planner</code> leg failed
+mid-sweep — clean for ~25 finals, then None for ~167 (an AM4 card-0 outage, <em>not</em> the model: a direct
+call afterward scores fine at 300 and 2048 tokens). So a real model-diversity gate needs per-node liveness/retry
+on a long unattended sweep — and, separately, the terse 300-token "SCORE: N" judge format is worth revisiting: a
+reasoning judge with a real token budget may calibrate better than a bare-score one.</p>
+<p><span class="lbl">Still open</span> whether a genuinely different model <em>family</em> (not two Qwens)
+decorrelates more than rubrics do — the current pair is same-family, which likely understates the model axis.</p>
+<p><span class="lbl">Decides</span> whether "diversify judge lenses" should mean different <strong>models</strong>,
+different <strong>rubrics</strong>, or both — and which models can even judge in-format.</p>
+</div>
+
+<h2>Group B — the mechanisms (what to change in the loop)</h2>
+
+<div class="panel rec">
+<h3>R3 · Adopt the concise-author prompt — it's the highest-scoring <em>and</em> most judge-robust arm. <span class="tag t-dir">DIRECTIONAL</span></h3>
+<p><span class="lbl">Backed by</span> <strong>+2.8</strong> vs baseline under the neutral judge, flat-high ~91
+across laps 1–6, wins under every rubric. And the new cut: concise-author has the <strong>lowest cross-rubric
+per-cell disagreement of any arm (2.6 pts)</strong> vs baseline 9.0 and thorough-critic 10.8 — different judge
+philosophies agree on it. It doesn't just score well, it scores <em>stably</em>. A mechanism autoreason's
+library doesn't have yet.</p>
+<p><span class="lbl">Still unknown</span> whether it transfers to David's tasks/models, and whether it survives a
+<strong>pairwise</strong> tournament judge (ours is absolute — see R6).</p>
+<p><span class="lbl">Experiment</span> <span class="econ">[IDLE-JUDGE]</span> after R6, pairwise re-score our
+existing finals (concise vs baseline) to check the effect survives the scoring-mode switch; then
+<span class="econ">[IDLE-GEN]</span> run concise-author as an arm inside the autoreason inner loop on his tasks.</p>
+<p><span class="lbl">Decides</span> whether concise-author is a portable, drop-in inner-loop mechanism or a
+Qwen-plus-absolute-judge artifact.</p>
+</div>
+
+<div class="panel rec">
+<h3>R4 · Cap laps rather than refine open-ended — it's nearly free. <span class="tag t-strong">STRONG</span></h3>
+<p><span class="lbl">Backed by</span> under a fair (neutral) judge, scores are flat <strong>~87–92 across laps
+1–4</strong>; capping L4→L2 erases the baseline's <span class="down">−10.7</span> default-judge collapse at
+≈0 neutral-judge cost. The lap <em>cap</em>, not convergence, was the real control knob in every round (critic
+converged on 0/12 cells).</p>
+<p><span class="lbl">Still unknown</span> only tested to lap 6; and because our critic never converged, "cap"
+and "converge" were never cleanly separated.</p>
+<p><span class="lbl">Experiment</span> <span class="econ">[IDLE-GEN]</span> one extended run to laps 8–10 to
+confirm no late cliff. Low priority — the L1–6 flatness already largely settles it.</p>
+<p><span class="lbl">Decides</span> the safe default lap cap for both the commander lane and his inner loop.</p>
+</div>
+
+<div class="panel rec">
+<h3>R5 · Treat "escalate critic difficulty" as a tax, not a default fix. <span class="tag t-dir">DIRECTIONAL</span></h3>
+<p><span class="lbl">Backed by</span> our <code>thorough-critic</code> arm <em>is</em> that mechanism (demand
+exhaustive coverage) and it was the <strong>worst arm</strong> (80.2 default, <span class="down">−0.1</span> vs
+baseline even on the neutral judge), degrading at every lap. Mechanistic new cut: thorough-critic also has the
+<strong>highest cross-rubric disagreement (10.8 pts)</strong> — escalation produces verbose outputs whose
+quality is judge-<em>dependent</em>. It doesn't just score lower, it makes the score less trustworthy.</p>
+<p><span class="lbl">Still unknown</span> autoreason applies this mechanism <em>for premature convergence</em> — a
+signature our loop never hit (we had the opposite failure). So we've measured its cost, not its benefit where
+it's meant to fire.</p>
+<p><span class="lbl">Experiment</span> <span class="econ">[IDLE-GEN]</span> induce premature convergence (lower
+the convergence bar in <code>refine.py</code> so cells stop early), then A/B critic-escalation on/off, judged
+under R1's multi-vote gate. Measure net effect <em>in-regime</em>.</p>
+<p><span class="lbl">Decides</span> whether his premature-convergence fix is net-positive where it triggers, or
+whether raising the convergence bar directly dominates it at lower quality cost.</p>
+</div>
+
+<h2>Group C — the enabling build</h2>
+
+<div class="panel rec">
+<h3>R6 · Build a pairwise-judge mode. <span class="tag t-gap">NEEDS BUILD</span></h3>
+<p><span class="lbl">Backed by</span> our judge scores each response <strong>absolutely</strong> (0–100, one at a
+time); autoreason's tournament is <strong>pairwise</strong> (A/B/AB). Two consequences: our mechanism results
+aren't yet proven under his scoring regime, and his <code>position_bias</code> signature <em>cannot exist</em>
+in our data — there's no A/B position to bias.</p>
+<p><span class="lbl">Still unknown</span> whether the concise-author / lap-cap effects survive pairwise scoring,
+and how large position bias is on a Qwen judge.</p>
+<p><span class="lbl">Experiment</span> <span class="econ">[BUILD]</span> add <code>pairwise_score(A, B)</code>
+that presents both orders and records the swap; <code>position_bias</code> = order-swap disagreement rate.
+~half a day; then it feeds R3 and gives R2's panel a pairwise variant.</p>
+<p><span class="lbl">Decides</span> unlocks the transfer test (R3) and the only clean measure of his
+<code>position_bias</code> — the prerequisite that turns "run it in his loop" from aspiration into a wired path.</p>
+</div>
+
+<h2>The data-collection plan at a glance</h2>
+<table>
+<tr><th>#</th><th>experiment</th><th>economy</th><th>regen?</th><th>unlocks</th><th>status</th></tr>
+<tr><td>1</td><td>repeat-judge variance decomposition (K=6× neutral)</td><td class="econ">IDLE-JUDGE</td><td>no</td><td>R1 gate-vote count</td><td class="up">RUNNING</td></tr>
+<tr><td>2</td><td>3-model judge panel over the 192 finals</td><td class="econ">IDLE-JUDGE</td><td>no</td><td>R2 model-vs-rubric diversity</td><td class="up">RUNNING</td></tr>
+<tr><td>3</td><td>pairwise-judge mode (harness change)</td><td class="econ">BUILD</td><td>—</td><td>R3, R6, position_bias</td><td class="up">P1</td></tr>
+<tr><td>4</td><td>pairwise re-score concise vs baseline (after #3)</td><td class="econ">IDLE-JUDGE</td><td>no</td><td>R3 transfer check</td><td>P2</td></tr>
+<tr><td>5</td><td>induce-premature-convergence A/B (escalation on/off)</td><td class="econ">IDLE-GEN</td><td>yes</td><td>R5 in-regime effect</td><td>P2</td></tr>
+<tr><td>6</td><td>autoreason inner loop + wind-tunnel arms, end-to-end</td><td class="econ">IDLE-GEN</td><td>yes</td><td>the PR's missing empirical section</td><td>P2</td></tr>
+<tr><td>7</td><td>extended-lap run (L8–10)</td><td class="econ">IDLE-GEN</td><td>yes</td><td>R4 confirmation</td><td>P3</td></tr>
+</table>
+<p class="why">Note the shape: the two highest-value judge questions (R1, R2) and the transfer check (R3) cost
+<strong>zero generation</strong> — they re-score outputs we already have on sunk local compute. Only the
+in-regime and end-to-end tests need new runs, and those still ride idle B70/OMEN. Nothing here needs a frontier
+token. Free re-analysis already done: the per-cell rubric spread in R1/R3/R5 came straight out of the stored
+<code>rejudge_rows.jsonl</code> — <span class="econ">[FREE]</span>, no run at all.</p>
+
+<h2>If you do three things</h2>
+<div class="panel live">
+<ol>
+<li><strong>Tell David: don't ship <code>--gate-votes 1</code>.</strong> A single lens flips a real sign here;
+per-item rubric disagreement runs to 47 points. That's the load-bearing, data-backed message (R1).</li>
+<li><strong>Experiments 1–2 are running now</strong> (idle judge-only; full numbers ~18:30). The preliminary
+read already sharpens R1: the judge is self-consistent (~1 pt), so the gate must <em>diversify</em> lenses/models,
+not repeat — and model diversity ≈ rubric diversity so far, with the caveat that a judge model must actually
+parse in-format (oxen-planner didn't).</li>
+<li><strong>Build the pairwise-judge mode</strong> (R6) — it's the small change that lets everything else plug
+into his actual tournament, and it's the only way to give his <code>position_bias</code> signature a number.</li>
+</ol>
+</div>
+
+<p class="meta">Provenance: wind-tunnel numbers from <a href="MATRIX-WIND-TUNNEL-LOG.html">MATRIX-WIND-TUNNEL-LOG.html</a>
+Rounds 5–6; per-cell rubric-spread figures extracted 2026-07-10 from the stored study
+<code>rejudge_rows.jsonl</code> (192 cells, 3 rubrics). Harness references: <code>hearth/experiments/matrix.py</code>
+(absolute scorer, multi-judge panel, ordering axis) + <code>rejudge.py</code>. autoreason references from PR #2
+as read 2026-07-10; nothing in it was executed.</p>
+
+</body>
+</html>

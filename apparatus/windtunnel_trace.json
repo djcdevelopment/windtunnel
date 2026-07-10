@@ -1,0 +1,42 @@
+{
+  "source": "windtunnel Matrix Wind-Tunnel, Rounds 5-6 (byte-for-byte from MATRIX-WIND-TUNNEL-LOG.html)",
+  "dataset_ids": ["matrix-20260706T052819Z-pilot", "matrix-20260706T063613Z-sweep-r2"],
+  "judge_lenses": ["default_directness", "completeness", "neutral"],
+  "consensus_lens": "neutral",
+  "arms": ["baseline", "concise_author", "minimalist_critic", "thorough_critic"],
+  "control_arm": "baseline",
+  "laps": [1, 2, 3, 4],
+
+  "by_arm_by_lens": {
+    "baseline":          {"default_directness": 82.1, "completeness": 90.4, "neutral": 88.1},
+    "concise_author":    {"default_directness": 90.1, "completeness": 90.2, "neutral": 90.9},
+    "minimalist_critic": {"default_directness": 87.1, "completeness": 89.1, "neutral": 89.8},
+    "thorough_critic":   {"default_directness": 80.2, "completeness": 90.3, "neutral": 88.0}
+  },
+
+  "by_arm_by_lap_default": {
+    "baseline":          [85.2, 84.2, 84.3, 74.5],
+    "minimalist_critic": [88.8, 86.8, 86.2, 86.5],
+    "thorough_critic":   [84.5, 80.3, 79.2, 76.8],
+    "concise_author":    [91.4, 90.8, 88.0, 90.2]
+  },
+
+  "by_arm_by_lap_neutral": {
+    "baseline":       [90.2, 87.4, 89.1, 86.5],
+    "concise_author": [91.4, 91.4, 91.1, 91.7]
+  },
+
+  "convergence": {
+    "cells_total": 12,
+    "cells_converged": 0,
+    "cells_full_budget_burned": 12,
+    "note": "critic never emitted 'VERDICT: CONVERGED' on any pilot cell"
+  },
+
+  "ordering_axis": {
+    "present": true,
+    "levels": ["AM4->OMEN", "OMEN->AM4"],
+    "per_level_scores": null,
+    "note": "the wind-tunnel judge is ABSOLUTE (one response, 0-100), so no A/B position exists to bias; autoreason's pairwise position_bias needs a pairwise-judge mode. This ordering axis swaps the planner/critic MODEL (model-confounded) and Rounds 5-6 fixed it anyway."
+  }
+}

@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bilevel Apparatus — Proof Run</title>
+<style>
+  :root{--bg:#0f1115;--panel:#171a21;--panel2:#1d2130;--ink:#d8dee9;--dim:#8b95a7;
+        --accent:#e8a33d;--green:#7fbf7f;--red:#d97b7b;--blue:#6fa8dc;--border:#2a2f3a}
+  *{box-sizing:border-box}
+  body{background:var(--bg);color:var(--ink);font:15px/1.55 "Segoe UI",system-ui,sans-serif;margin:0;padding:2rem;max-width:1080px;margin-inline:auto}
+  h1{color:var(--accent);font-size:1.7rem;border-bottom:2px solid var(--accent);padding-bottom:.4rem;margin-bottom:.2rem}
+  h2{color:var(--blue);font-size:1.2rem;margin-top:2.2rem;border-bottom:1px solid var(--border);padding-bottom:.3rem}
+  h3{color:var(--ink);font-size:1.02rem;margin-bottom:.3rem}
+  a{color:var(--blue)}
+  .meta{color:var(--dim);font-size:.85rem}
+  .panel{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:1rem 1.3rem;margin:1rem 0}
+  .finding{border-left:4px solid var(--accent)}
+  .live{border-left:4px solid var(--green)}
+  code{font-family:Consolas,monospace;background:var(--panel2);border-radius:4px;padding:.1em .35em;font-size:.88em}
+  pre{background:#0b0d11;border:1px solid var(--border);border-radius:8px;padding:1rem 1.1rem;overflow-x:auto;
+      font-family:Consolas,monospace;font-size:.8rem;line-height:1.45;color:var(--ink)}
+  pre .c{color:var(--green)} pre .a{color:var(--accent)} pre .d{color:var(--dim)} pre .r{color:var(--red)}
+  table{border-collapse:collapse;width:100%;font-size:.88rem;margin:.7rem 0}
+  th,td{border:1px solid var(--border);padding:.4rem .6rem;text-align:left;vertical-align:top}
+  th{background:var(--panel2);color:var(--blue)}
+  td.n{text-align:right;font-variant-numeric:tabular-nums}
+  .up{color:var(--green)} .down{color:var(--red)}
+  .tag{display:inline-block;padding:.05rem .5rem;border-radius:10px;font-size:.72rem;font-weight:600}
+  .t-live{background:#2a3d2a;color:var(--green)}
+  ul{margin:.4rem 0}
+  .why{color:var(--dim);font-style:italic}
+  .files{font-family:Consolas,monospace;font-size:.85rem}
+</style>
+</head>
+<body>
+
+<h1>Bilevel Apparatus — Proof Run <span class="tag t-live">RUNS · 0 TOKENS</span></h1>
+<p class="meta">2026-07-10 · a working apparatus that runs the diagnosis step of the
+<a href="https://github.com/NousResearch/autoreason/pull/2">autoreason bilevel outer loop</a> over the
+wind-tunnel's own Rounds 5–6 trace. Deterministic, stdlib-only, no model in the loop. This page shows the real
+output, byte-for-byte from the console. Design map: <a href="AUTOREASON-CROSSOVER.html">AUTOREASON-CROSSOVER.html</a>.</p>
+
+<div class="panel" style="border-left:4px solid var(--green)">
+<h3 style="margin-top:0;color:var(--green)">What this proves</h3>
+<p>The autoreason PR argues the outer loop should be <em>deterministic</em> — "a rule-based classifier over the
+trace ... with <strong>no LLM call at the diagnosis step</strong>" — for auditability and cost. This apparatus
+is that classifier, pointed at real consumer-hardware data. It (1) scans for all six of his failure signatures,
+(2) picks the highest-severity one, (3) looks up the mechanism bundle seeded with our <em>measured</em> deltas,
+and (4) sizes his quality gate from our judge-robustness numbers. Everything below came out of
+<code>python run_apparatus.py</code> — no tokens spent, which is the whole point.</p>
+</div>
+
+<h2>The apparatus</h2>
+<div class="panel">
+<p class="files">
+apparatus/<br>
+&nbsp;&nbsp;windtunnel_trace.json &nbsp;<span class="dim">— real Round 5–6 numbers, machine-readable</span><br>
+&nbsp;&nbsp;signatures.py &nbsp;<span class="dim">— deterministic six-signature classifier (mirrors his mechanisms.py)</span><br>
+&nbsp;&nbsp;mechanism_library.py &nbsp;<span class="dim">— signature → config delta, seeded with measured deltas</span><br>
+&nbsp;&nbsp;judge_robustness.py &nbsp;<span class="dim">— inflation, between-lens noise, required gate-votes</span><br>
+&nbsp;&nbsp;run_apparatus.py &nbsp;<span class="dim">— one outer-loop diagnosis pass, prints the report</span><br>
+&nbsp;&nbsp;test_apparatus.py &nbsp;<span class="dim">— 14 stdlib checks</span>
+</p>
+<p class="why">Pure Python 3.12 standard library. No network, no GPU, no API key. Runs in well under a second.</p>
+</div>
+
+<h2>Self-tests — <span class="up">14/14</span> <span class="tag t-live">python test_apparatus.py</span></h2>
+<pre><span class="c">  ok</span>  non_convergence is the selected (highest-severity) signature
+<span class="c">  ok</span>  non_convergence fires at full severity (0/12 cells converged)
+<span class="c">  ok</span>  judge_herding fires (completeness lens spread 1.3 &lt; 2.0)
+<span class="c">  ok</span>  candidate_collapse correctly reports insufficient data (single-chain matrix)
+<span class="c">  ok</span>  position_bias correctly reports insufficient data (order axis not isolated)
+<span class="c">  ok</span>  premature_convergence does NOT fire (0 cells converged -- opposite failure)
+<span class="c">  ok</span>  all six autoreason signatures are present exactly once
+<span class="c">  ok</span>  non_convergence recommends a lap cap (the measured control knob)
+<span class="c">  ok</span>  the cross-cutting bonus mechanism is the concise-author prompt
+<span class="c">  ok</span>  consensus (neutral) effect is +2.8 (got +2.80)
+<span class="c">  ok</span>  single-lens inflation ~= 2.86x (got 2.857)
+<span class="c">  ok</span>  the completeness lens would flip the sign of the concise-author gain
+<span class="c">  ok</span>  gate needs &gt;= 2 votes to resolve the effect (got 9)
+<span class="c">  ok</span>  escalate-critic mechanism measured BELOW baseline on neutral judge (-0.1)
+
+14 checks passed.</pre>
+
+<h2>Diagnosis pass <span class="tag t-live">python run_apparatus.py</span></h2>
+<pre>==============================================================================
+BILEVEL OUTER LOOP -- diagnosis pass over wind-tunnel trace
+  source : windtunnel Matrix Wind-Tunnel, Rounds 5-6 (byte-for-byte from MATRIX-WIND-TUNNEL-LOG.html)
+  arms   : baseline, concise_author, minimalist_critic, thorough_critic   (control = baseline)
+  lenses : default_directness, completeness, neutral   (consensus = neutral)
+  cost   : 0 tokens -- rule-based classifier, no LLM in the diagnosis step
+==============================================================================
+
+[1] FAILURE-SIGNATURE SCAN  (six autoreason signatures)
+
+<span class="a">  FIRED  non_convergence        sev=1.00</span>
+         0/12 cells reached VERDICT: CONVERGED; 12/12 burned the full lap budget.
+         The lap CAP, not convergence, is the control knob.
+<span class="a">  FIRED  judge_herding          sev=0.33</span>
+         arm spread per lens: default_directness spread 9.9, completeness spread 1.3,
+         neutral spread 2.9. Lens(es) ['completeness'] collapse below 2.0 pts --
+         they can no longer tell the arms apart (herding).
+<span class="d">  n/a    candidate_collapse     sev=0.00</span>
+         matrix is a single planner-&gt;critic chain per cell; no candidate population
+         =&gt; diversity not measurable (autoreason's tournament has it).
+<span class="d">  clear  oscillation            sev=0.17</span>
+         no arm oscillates above the noise floor.
+<span class="d">  n/a    position_bias          sev=0.00</span>
+         N/A: the wind-tunnel judge scores ABSOLUTELY (0-100, one at a time) -- no A/B
+         position to bias. autoreason's pairwise position_bias needs a pairwise-judge
+         mode (not built). Our ordering axis swaps the planner/critic MODEL instead.
+<span class="d">  clear  premature_convergence  sev=0.00</span>
+         0 cells converged -- the opposite failure (non_convergence) holds.
+
+  &gt;&gt; selected signature (highest severity): <span class="a">non_convergence</span>
+
+------------------------------------------------------------------------------
+[2] MECHANISM LOOKUP  (signature -> config delta, seeded with measured deltas)
+
+  signature      : non_convergence
+  config bundle  : ['cap_laps=2', 'tighten_convergence_threshold', 'stop_on_no_delta']
+  wind-tunnel ev : VERDICT: CONVERGED on 0/12 cells; every cell burned its full lap
+                   budget. Under a fair judge, scores are flat ~87-92 across laps 1-4,
+                   so a hard lap cap costs almost nothing while bounding compute.
+  measured delta : capping L4-&gt;L2 recovers the baseline's -10.7 default-judge collapse;
+                   neutral-judge cost ~0 (curve is flat).
+
+  cross-cutting lever (not in autoreason's library yet):
+    <span class="c">concise_author_prompt</span>: "shortest complete, buildable answer; lead with the decision"
+    measured: +2.8 vs baseline (neutral judge); was +8.0 under the biased default
+    judge -- inflated ~3x. Survives every lens. Transferable to the inner loop.
+
+------------------------------------------------------------------------------
+[3] GATE SIZING  (judge robustness for arm 'concise_author' vs baseline)
+
+  effect by lens       : default_directness=<span class="up">+8.0</span>, completeness=<span class="r">-0.2</span>, neutral=<span class="up">+2.8</span>
+  consensus effect     : +2.8  (lens: neutral)
+  single-lens inflation: <span class="r">2.86x</span>  (max lens / consensus)
+  between-lens noise   : 4.15 pts (sample std across lenses)
+  sign-flip lenses     : <span class="r">['completeness']</span>  (lenses that would REVERT a real gain)
+  required gate votes  : <span class="a">9</span>  (to resolve the effect at ~2 sigma)
+
+==============================================================================
+VERDICT
+  Wind-tunnel data is a live instance of autoreason's 'non_convergence' signature.
+  A 1-vote gate drawing the 'completeness' lens would REVERT the concise_author
+  gain (+2.8 under consensus).
+  =&gt; the gate needs &gt;= 9 lens-diverse votes, not 1. This is the math that backs
+  the autoreason gate.
+==============================================================================</pre>
+<p class="why">(Wrapped for width; the console prints each evidence line unbroken. Numbers are verbatim.)</p>
+
+<h2>How to read it</h2>
+<div class="panel finding">
+<ul>
+<li><strong>Step 1</strong> shows the wind-tunnel trace is a real instance of his <code>non_convergence</code>
+signature, and a live instance of <code>judge_herding</code> under the completeness lens — the two signatures a
+self-refinement loop trips most.</li>
+<li><strong>Step 2</strong> returns a config bundle carrying an <em>empirical prior</em>, not a guess: our runs
+already measured that the lap cap is nearly free and that the concise-author prompt is the robust lever.</li>
+<li><strong>Step 3</strong> is the load-bearing part. It turns "diversify the judge" into a number: with a ~+2.8
+effect and ~4.15-pt between-lens noise, his gate needs <strong>≈9 lens-diverse votes</strong>, and a 1-vote
+gate has a one-in-three chance of reverting a genuine gain (the completeness lens flips the sign).</li>
+</ul>
+<p>This is the diagnosis half of his outer loop, proven runnable on real data at zero token cost. The other
+half — actually applying a mechanism and re-running the inner tournament on B70/OMEN to produce the empirical
+benefit his PR flags as missing — is the joint experiment we can stand up next.</p>
+</div>
+
+<p class="meta">Provenance: <code>apparatus/</code> at windtunnel repo root; trace lifted from
+<a href="MATRIX-WIND-TUNNEL-LOG.html">MATRIX-WIND-TUNNEL-LOG.html</a> Rounds 5–6. Output captured 2026-07-10,
+Python 3.12.10, Windows. Two-economies doctrine: the outer loop is sunk-compute cheap by construction.</p>
+
+</body>
+</html>
