@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Matrix Wind-Tunnel — Lab Log</title>
+<style>
+  :root{--bg:#0f1115;--panel:#171a21;--panel2:#1d2130;--ink:#d8dee9;--dim:#8b95a7;
+        --accent:#e8a33d;--green:#7fbf7f;--red:#d97b7b;--blue:#6fa8dc;--border:#2a2f3a}
+  *{box-sizing:border-box}
+  body{background:var(--bg);color:var(--ink);font:15px/1.55 "Segoe UI",system-ui,sans-serif;margin:0;padding:2rem;max-width:1080px;margin-inline:auto}
+  h1{color:var(--accent);font-size:1.7rem;border-bottom:2px solid var(--accent);padding-bottom:.4rem;margin-bottom:.2rem}
+  h2{color:var(--blue);font-size:1.2rem;margin-top:2.2rem;border-bottom:1px solid var(--border);padding-bottom:.3rem}
+  h3{color:var(--ink);font-size:1.02rem;margin-bottom:.3rem}
+  .meta{color:var(--dim);font-size:.85rem}
+  .panel{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:1rem 1.3rem;margin:1rem 0}
+  .finding{border-left:4px solid var(--accent)}
+  .live{border-left:4px solid var(--green)}
+  code{font-family:Consolas,monospace;background:var(--panel2);border-radius:4px;padding:.1em .35em;font-size:.88em}
+  table{border-collapse:collapse;width:100%;font-size:.88rem;margin:.7rem 0}
+  th,td{border:1px solid var(--border);padding:.4rem .6rem;text-align:left}
+  th{background:var(--panel2);color:var(--blue)}
+  td.n{text-align:right;font-variant-numeric:tabular-nums}
+  .up{color:var(--green)} .down{color:var(--red)}
+  .tag{display:inline-block;padding:.05rem .5rem;border-radius:10px;font-size:.72rem;font-weight:600}
+  .t-live{background:#2a3d2a;color:var(--green)} .t-run{background:#3d362a;color:var(--accent)} .t-todo{background:#33323a;color:var(--dim)}
+  ul{margin:.4rem 0}
+  .why{color:var(--dim);font-style:italic}
+  .bar{display:inline-block;height:.7em;background:var(--blue);border-radius:2px;vertical-align:middle;margin-right:.4rem}
+</style>
+</head>
+<body>
+
+<h1>Matrix Wind-Tunnel — Lab Log</h1>
+<p class="meta">Living document · started 2026-07-05 · the mechnet's planning-quality experiment: does self-refinement actually improve planning, and does it depend on the model / hardware / task? Two-economies doctrine — laps on electricity across AM4 (2× Intel B70) + OMEN (RTX 5070). Updated as runs land.</p>
+
+<div class="panel" style="border-left:4px solid var(--green)">
+<h3 style="margin-top:0;color:var(--green)">Bottom line (read this first)</h3>
+<p>Six rounds of idle-hardware experiments on refinement laps for planning, ending with a confound check that
+rewrote the conclusion:</p>
+<ul>
+<li><strong>Lap count barely matters</strong> under fair (length-neutral) judging — quality sits ~87–92 across
+1–4 laps. The early "laps hurt → 2 laps best → over-refinement collapse" arc was <strong>largely an artifact
+of the default judge's brevity bias</strong> (it penalized the verbosity that laps accumulate).</li>
+<li><strong>The one robust, real effect: a concise author system prompt</strong> ("shortest complete answer;
+lead with the decision") — a small (~+3) but consistent edge that survives every judge and stays flat across
+laps. That's the actionable change for the commander lane.</li>
+<li><strong>Biggest lesson — the judge is a first-order confound.</strong> A single LLM judge's rubric shaped
+the results more than the thing under test. This applies directly to the lab's belief/assay layer: LLM-scored
+agent work needs multi-rubric / multi-judge scoring, or the numbers measure the ruler.</li>
+</ul>
+<p class="why">The value wasn't the answer about laps (it's "meh") — it was the method: the wind tunnel
+flagged an effect, corrected it, explained it, then <em>caught its own measurement bias</em>. All on idle
+local electricity, overnight.</p>
+</div>
+
+<h2>What we built (the instrument)</h2>
+<div class="panel">
+<h3>Commander intent lane <span class="tag t-live">LIVE</span></h3>
+<p>A local author↔critic refine loop that takes frontier <em>out</em> of the run loop
+(<a href="docs/adr/0012-commander-intent-lane-frontier-out-of-loop.md" style="color:var(--blue)">ADR-0012</a>).
+<code>hearth/commander/</code> + door tools <code>refine_idea</code>/<code>refine_result</code> + CLI. This loop is the
+<strong>cell engine</strong> of the matrix.</p>
+<h3 style="margin-top:1rem">Matrix dataset harness <span class="tag t-live">LIVE</span></h3>
+<p>Per-role backend routing in <code>run_refine</code> (planner and critic on <em>different boxes</em>) +
+<code>hearth/experiments/</code> (cells, held-out critic-panel scorer, dataset). Each cell =
+<code>(planner × critic × prompt × laps × ordering)</code> → a scored proposal. Fully offline-testable
+(237 toolsurface tests green); the AM4/OMEN legs run live.</p>
+</div>
+
+<h2>The experiment</h2>
+<div class="panel">
+<p><strong>Question:</strong> the commander lane defaults to <code>rounds=3</code> refinement laps on the
+assumption more refinement = better. Is that true for <em>planning</em> tasks — and does it depend on which
+model plans vs critiques, and on the task?</p>
+<table>
+<tr><th>Axis</th><th>Values</th></tr>
+<tr><td>Planner / critic</td><td>AM4 <code>Qwen3-30B-A3B</code> (dual-B70, :8080 via oxen facade) · OMEN <code>qwen3-coder:30b</code></td></tr>
+<tr><td>Ordering</td><td>AM4→OMEN (AM4 plans, OMEN critiques) · OMEN→AM4 (reverse)</td></tr>
+<tr><td>Prompt</td><td>choose-next-agent · escalate-or-not · plan-skeleton (planning archetypes)</td></tr>
+<tr><td>Laps</td><td>1, 2, 3 self-refinement rounds</td></tr>
+<tr><td>Score</td><td>held-out judge panel (OMEN <code>qwen3-coder:30b</code>), 0–100 rubric</td></tr>
+</table>
+<p class="why">Interim grid uses one AM4 model (only the :8080 planner slot has Linux backing today; the
+:8081 critic slot is unbacked). Full 2-AM4-model grid unlocks once :8081 has a gguf+launcher.</p>
+</div>
+
+<h2>Finding 1 — refinement is <span class="down">not</span> a free win for planning <span class="tag t-todo">PRELIMINARY · superseded by Round 4 (2 laps wins)</span></h2>
+<p class="why" style="margin:0 0 .6rem">The rounds below (3 prompts, low n) suggested laps only hurt. The
+6-prompt n=12 Round 4 sweep corrected this: one review pass helps; only over-refinement hurts. Kept for the
+honest arc.</p>
+<div class="panel finding">
+<p>Across the 12-cell pilot (2026-07-06), <strong>3 laps scored lower than 1 lap for both planners.</strong>
+More refinement, on aggregate, made planning answers <em>worse</em>, not better.</p>
+<table>
+<tr><th>Planner</th><th>1 lap</th><th>3 laps</th><th>Δ</th></tr>
+<tr><td>AM4 Qwen3-30B</td><td class="n">85.0</td><td class="n">74.0</td><td class="n down">−11.0</td></tr>
+<tr><td>OMEN qwen3-coder:30b</td><td class="n">80.7</td><td class="n">78.3</td><td class="n down">−2.4</td></tr>
+<tr><td><strong>overall</strong></td><td class="n"><strong>82.8</strong></td><td class="n"><strong>76.2</strong></td><td class="n down"><strong>−6.6</strong></td></tr>
+</table>
+</div>
+
+<h2>Finding 2 — the effect is <span class="up">task-dependent</span> (but never positive) <span class="tag t-live">REVISED by sweep</span></h2>
+<div class="panel finding">
+<p><strong>Revised by the n=12 sweep:</strong> the pilot suggested refinement <em>helped</em> escalate-or-not;
+the sweep shows that was noise (flat at 84.2). Corrected read: refinement ranges from <em>harmless</em>
+(escalate-or-not, flat) to <em>harmful</em> (choose-next-agent, −12.5 at L3) — never a net win. Pilot n=1
+numbers below, kept for the record; the authoritative per-prompt×lap view is in the Confirmation sweep.</p>
+<table>
+<tr><th>Prompt</th><th>1 lap</th><th>3 laps</th><th>verdict</th></tr>
+<tr><td>choose-next-agent</td><td class="n">80.0</td><td class="n">65.0</td><td class="down">refinement HURT (−15)</td></tr>
+<tr><td>escalate-or-not</td><td class="n">83.5</td><td class="n">88.5</td><td class="up">refinement HELPED (+5)</td></tr>
+<tr><td>plan-skeleton</td><td class="n">85.0</td><td class="n">75.0</td><td class="down">refinement HURT (−10)</td></tr>
+</table>
+<p class="why">Read: the skeptical critic pushes toward more complexity/verbosity; for a crisp routing decision
+(choose-next-agent) or a deliberately-terse skeleton that penalizes; for a judgment call with tradeoffs to
+surface (escalate-or-not) it pays off.</p>
+</div>
+
+<h2>Finding 3 — the critic <span class="down">never converged</span> <span class="tag t-live">pilot</span></h2>
+<div class="panel finding">
+<p><code>converged=False</code> on <strong>all 12 cells</strong>. The critic never emitted
+<code>VERDICT: CONVERGED</code> — it always found something to revise, so every cell burned its full lap
+budget. "Refine until converged" would run forever here; the lap <em>cap</em> is what stops it. The
+convergence bar (or critic prompt) needs a look — and it means the lap count, not convergence, is the real
+control knob.</p>
+</div>
+
+<h2>Confirmation sweep — <span class="down">verdict: refinement doesn't help</span> <span class="tag t-live">DONE · 36 cells, n=12/lap</span></h2>
+<div class="panel live">
+<p>Sweep: <strong>laps {1,2,3} × 3 prompts × both orderings × 2 repeats = 36 cells</strong>, all ok
+(<code>matrix-20260706T063613Z-sweep-r2</code>). The pilot's effect <strong>replicated and sharpened</strong>.</p>
+<h3>Headline — score by lap count (all planners/prompts pooled)</h3>
+<table>
+<tr><th>Laps</th><th>Mean (n=12)</th><th></th></tr>
+<tr><td>1</td><td class="n"><strong>82.2</strong></td><td><span class="bar" style="width:164px"></span></td></tr>
+<tr><td>2</td><td class="n">81.4</td><td><span class="bar" style="width:163px"></span></td></tr>
+<tr><td>3</td><td class="n down">77.2</td><td><span class="bar" style="width:154px"></span></td></tr>
+</table>
+<p><strong>Monotonic decline (L1 &gt; L2 &gt; L3).</strong> Not U-shaped — there is no sweet spot at 2; L2 ≈ L1,
+then L3 degrades. <span class="why">1 lap is as good as 2 and clearly better than 3.</span></p>
+<h3 style="margin-top:1rem">Where the damage is — score by prompt × laps (n=4 each)</h3>
+<table>
+<tr><th>Prompt</th><th>L1</th><th>L2</th><th>L3</th><th>read</th></tr>
+<tr><td>choose-next-agent</td><td class="n">77.5</td><td class="n">77.5</td><td class="n down">65.0</td><td class="down">L3 collapse (−12.5)</td></tr>
+<tr><td>escalate-or-not</td><td class="n">84.2</td><td class="n">84.2</td><td class="n">84.2</td><td>dead flat — no effect</td></tr>
+<tr><td>plan-skeleton</td><td class="n">85.0</td><td class="n">82.5</td><td class="n">82.5</td><td class="down">mild decline</td></tr>
+</table>
+<p class="why">Correction to the pilot: escalate-or-not's apparent "+5 at L3" was <strong>noise</strong> — with n=4
+it's flat. No task improved with more laps; the best case is "no change," the worst is a real drop on the
+routing/decision task. AM4 Qwen3-30B alone showed L2=85 (its best) then L3=74.5, but OMEN went the other way,
+so the pooled signal is: <strong>don't refine past 1 lap for planning.</strong></p>
+</div>
+
+<h2>Round 3 — a <span class="down">dedicated</span> planner↔critic doesn't flip it either <span class="tag t-run">2/3 prompts, n=6/lap</span></h2>
+<div class="panel finding">
+<p>The obvious objection: rounds 1–2 used two <em>general</em> models with a generic critic that never
+converged — maybe a purpose-built loop is where laps earn their keep. So we built exactly that:
+<strong>Qwen3-30B planner (card 0) ↔ Qwen2.5-14B critic (card 1)</strong>, dedicated asymmetric roles,
+OMEN a held-out judge.</p>
+<table>
+<tr><th>Laps</th><th>Mean (n=6)</th></tr>
+<tr><td>1</td><td class="n"><strong>84.5</strong></td></tr>
+<tr><td>2</td><td class="n">81.3</td></tr>
+<tr><td>3</td><td class="n">81.8</td></tr>
+</table>
+<p><strong>Still no win for refinement.</strong> L1 best; L2/L3 dip then flatten. A dedicated critic did
+<em>not</em> flip it — "1 lap is best for planning" is robust across model pairings. <span class="why">(The
+plan-skeleton cells are re-running after a host-RAM OOM took the planner mid-sweep; the two completed
+prompts already tell the story.)</span></p>
+</div>
+
+<h2>Round 4 — the larger matrix <span class="up">flips it</span>: 2 laps is the sweet spot <span class="tag t-live">AUTHORITATIVE · 48/48, 6 prompts, n=12/lap</span></h2>
+<div class="panel finding">
+<p>Doubling the task coverage (6 planning archetypes) and the samples (n=12/lap), memory-safe cross-machine
+(AM4 30B planner ↔ OMEN critic), <strong>overturned the preliminary finding.</strong> With only the 3
+original prompts and low n, refinement looked monotonically harmful. It isn't — the curve is an
+<strong>inverted-U with a peak at 2 laps</strong>:</p>
+<table>
+<tr><th>Laps</th><th>Mean (n=12)</th><th></th></tr>
+<tr><td>1</td><td class="n">81.2</td><td><span class="bar" style="width:162px"></span></td></tr>
+<tr><td>2</td><td class="n up"><strong>86.2</strong></td><td><span class="bar" style="width:172px;background:var(--green)"></span></td></tr>
+<tr><td>3</td><td class="n">82.6</td><td><span class="bar" style="width:165px"></span></td></tr>
+<tr><td>4</td><td class="n down">75.9</td><td><span class="bar" style="width:152px;background:var(--red)"></span></td></tr>
+</table>
+<p><strong>Refinement DOES help — up to 2 laps (+5 over 1 lap) — then over-refinement degrades</strong>
+(L4 is worst of all). Per prompt, L2 is best on 4 of 6 archetypes:</p>
+<table>
+<tr><th>Prompt</th><th>L1</th><th>L2</th><th>L3</th><th>L4</th></tr>
+<tr><td>choose-next-agent</td><td class="n">65.0</td><td class="n up">83.5</td><td class="n">65.0</td><td class="n">70.0</td></tr>
+<tr><td>escalate-or-not</td><td class="n">85.0</td><td class="n up">88.5</td><td class="n">85.0</td><td class="n down">75.0</td></tr>
+<tr><td>plan-skeleton</td><td class="n">80.0</td><td class="n">80.0</td><td class="n up">85.0</td><td class="n">78.5</td></tr>
+<tr><td>resource-allocation</td><td class="n">85.0</td><td class="n up">92.0</td><td class="n up">92.0</td><td class="n down">75.0</td></tr>
+<tr><td>risk-triage</td><td class="n">88.5</td><td class="n">88.5</td><td class="n">86.5</td><td class="n">92.0</td></tr>
+<tr><td>rollback-decision</td><td class="n">83.5</td><td class="n up">85.0</td><td class="n">82.0</td><td class="n down">65.0</td></tr>
+</table>
+<p class="why">Why the reversal: the 3 original prompts happened to be ones a review pass didn't help; the
+3 new archetypes (resource-allocation, risk-triage, rollback-decision) benefit from one. And n=12 beats the
+earlier n=1–3 noise. Caveat: per-prompt cells are still n=2 (noisy — choose-next-agent swings 65↔83); trust
+the pooled by-laps (n=12). The honest arc — preliminary "1 lap" → authoritative "2 laps" — is the
+wind-tunnel working as intended.</p>
+</div>
+
+<h2>Hardware finding — <span class="down">32GB DDR4</span> is the binding constraint, not VRAM <span class="tag t-live">confirmed</span></h2>
+<div class="panel finding">
+<p>The dedicated-loop run surfaced an infra truth flagged from the very start: the B70s hold 64GB VRAM
+total, but AM4 has only <strong>32GB DDR4 host RAM</strong>. SYCL llama-server keeps host-side KV + compute
+buffers even with <code>-ngl 99</code>; co-loading the 30B planner + 14B critic at generous contexts
+<strong>OOM-killed the planner</strong> mid-run (503s until systemd restarted it). Dropping the critic
+32k→8k ctx freed ~7 GiB (used 23→16 GiB) and restored headroom. The old Windows vllama had a
+<code>max_host_used_gb_preflight: 22.0</code> gate for exactly this — the Linux serving has none yet
+(a real follow-up). Runbook:
+<a href="am4-fleet-node/B70-CARD-MANAGEMENT.md" style="color:var(--blue)">B70-CARD-MANAGEMENT.md</a>.</p>
+</div>
+
+<h2>Round 5 — the over-refinement collapse is a <span class="up">prompt artifact</span>, not a law <span class="tag t-live">AUTHORITATIVE · 192/192, n=12/arm·lap</span></h2>
+<div class="panel finding">
+<p>Round 4's inverted-U raised the real question: is the L3–L4 collapse <em>inherent to refining</em>, or is
+the critic pushing bloat the judge then penalizes? So we swept 4 prompt-variant arms across the full grid
+(memory-safe cross-machine). The answer is decisive — <strong>the collapse is caused by the prompt, and a
+better prompt removes it entirely.</strong></p>
+<table>
+<tr><th>Arm (what it changes)</th><th>L1</th><th>L2</th><th>L3</th><th>L4</th><th>overall</th></tr>
+<tr><td>baseline</td><td class="n">85.2</td><td class="n">84.2</td><td class="n">84.3</td><td class="n down">74.5</td><td class="n">82.1</td></tr>
+<tr><td><strong>minimalist-critic</strong> (reward brevity)</td><td class="n">88.8</td><td class="n">86.8</td><td class="n">86.2</td><td class="n up">86.5</td><td class="n">87.1</td></tr>
+<tr><td>thorough-critic (demand coverage)</td><td class="n">84.5</td><td class="n">80.3</td><td class="n">79.2</td><td class="n down">76.8</td><td class="n down">80.2</td></tr>
+<tr><td><strong>concise-author</strong> (shortest complete)</td><td class="n up">91.4</td><td class="n up">90.8</td><td class="n">88.0</td><td class="n up">90.2</td><td class="n up"><strong>90.1</strong></td></tr>
+</table>
+<ul>
+<li><strong>The collapse is prompt-driven.</strong> baseline dives at L4 (→74.5); <strong>minimalist-critic
+stays flat</strong> (~86 across all laps — no collapse). The critic pushing complexity <em>was</em> the cause.</li>
+<li><strong>The author prompt dominates the critic prompt.</strong> <code>concise-author</code> is the best arm
+AND immune to over-refinement (90.2 at L4). "Write the shortest complete answer" beats every critic tweak — a
+bigger, simpler lever.</li>
+<li><strong>thorough-critic is actively harmful</strong> (80.2, worst) — demanding exhaustiveness degrades
+planning at every lap. Mechanism confirmed.</li>
+</ul>
+<p><strong>Follow-up confirms it (72/72, laps 1–6):</strong> the stacked winners (concise author + minimalist
+critic) hold <strong>flat-high (~90) across all six laps</strong> — 87.3 / 91.3 / 91.3 / 85.7 / 90.8 / 88.5
+(overall 89.2) — while baseline degrades and gets erratic (88→77.8→82.8→72.3→76.2, overall 80.9). Prompt
+design <em>fully</em> defeats the over-refinement collapse: with the right prompt, lap count stops mattering.</p>
+<p class="why">One loophole left, tested next: is "concise wins" partly the single OMEN judge rewarding
+directness? A re-judge of the same outputs under a completeness-favoring rubric settles whether concise
+answers are genuinely better planning or just judge-preferred.</p>
+</div>
+
+<h2>Round 6 — the <span class="down">judge was a confound</span>; the effect is real but smaller <span class="tag t-live">honest caveat · 192 finals re-judged</span></h2>
+<div class="panel finding">
+<p>Before trusting any of the above: the score came from ONE judge (OMEN qwen3-coder) whose rubric included
+"directness". Does that reward brevity and inflate concise-author? We re-judged all 192 finals under two
+alternative rubrics — <strong>no regeneration, same outputs</strong> — and it changed the story.</p>
+<table>
+<tr><th>Arm</th><th>default (directness)</th><th>completeness judge</th><th>neutral judge</th></tr>
+<tr><td>baseline</td><td class="n">82.1</td><td class="n">90.4</td><td class="n">88.1</td></tr>
+<tr><td>concise-author</td><td class="n">90.1</td><td class="n">90.2</td><td class="n up"><strong>90.9</strong></td></tr>
+<tr><td>minimalist-critic</td><td class="n">87.1</td><td class="n">89.1</td><td class="n">89.8</td></tr>
+<tr><td>thorough-critic</td><td class="n">80.2</td><td class="n">90.3</td><td class="n">88.0</td></tr>
+</table>
+<ul>
+<li><strong>The finding survives — concise-author still wins under the neutral judge</strong> (90.9, top of the
+ranking). It's genuinely better planning, not just short answers the judge liked.</li>
+<li><strong>But the effect was inflated ~3x.</strong> The default judge's brevity bias stretched concise's
+lead to +8; length-neutral, it's <strong>+2.8</strong> over baseline.</li>
+<li><strong>The completeness judge collapses the spread</strong> (all arms ~90): baseline and thorough-critic
+jump from ~81 → ~90. So much of the "over-refinement collapse" and arm spread was the default judge
+<em>penalizing verbosity</em>, not real quality loss.</li>
+</ul>
+<p><strong>Definitive — the collapse was largely a judge artifact.</strong> Re-judging per lap under the
+neutral rubric: baseline goes 90.2 / 87.4 / 89.1 / <strong>86.5</strong> (a mild −3.7 drift, NO cliff) where
+the default judge showed a −10.7 collapse to 74.5. concise-author is <strong>dead flat and top at every
+lap</strong> (91.4 / 91.4 / 91.1 / 91.7). So under fair measurement, <strong>lap count barely matters</strong>
+(everything sits ~87–92 across 1–4 laps); the one robust effect is the concise author prompt's small,
+consistent edge.</p>
+<p class="why"><strong>Meta-lesson (the biggest one):</strong> the judge rubric is a first-order confound —
+the Round 4–5 "inverted-U / collapse" was mostly the instrument. Always test the judge. This lands on the
+lab's own belief/assay layer: LLM-scored agent work needs multi-rubric judging, or the scores measure the
+ruler as much as the work.</p>
+</div>
+
+<h2>What this changes <span class="tag t-live">calibrated by Round 6</span></h2>
+<ul>
+<li><strong>A concise author prompt is a real, modest win.</strong> Setting the commander lane's author system
+prompt to concise ("shortest complete, buildable answer; lead with the decision; no preamble") helps ~+3
+under a fair judge (not the +8 the default judge suggested). Worth doing; not a silver bullet.</li>
+<li><strong>Lap count matters less than it first looked</strong> — much of the "over-refinement collapse" was
+the default judge penalizing the verbosity that more laps produce. Don't hard-cap laps on that basis; a
+concise author + a fair judge is the better fix. (Pending the per-lap re-judge to quantify exactly.)</li>
+<li><strong>The biggest takeaway is about measurement, not laps:</strong> the judge rubric was a first-order
+confound that inflated every effect ~3x. This lands directly on the lab's own belief/assay layer — <em>it
+scores agent work with LLM judges too.</em> Judge-robustness (multi-rubric / multi-judge) belongs in the
+assay, or the scores measure the ruler as much as the work.</li>
+<li><strong>The matrix earned its keep four times:</strong> found an effect → corrected it → explained it →
+then <em>caught its own measurement bias</em>. Idle local hardware, self-funding — and self-skeptical —
+knowledge. That last step is the one most experiments skip.</li>
+</ul>
+
+<h2>Open threads</h2>
+<ul>
+<li>Back the <code>:8081</code> critic slot (gguf + launcher) → full 2-AM4-model grid.</li>
+<li>Bigger sweep for statistical confidence if the 36-cell run is suggestive but not decisive.</li>
+<li>Fix the knowledge-guard bug blocking <code>query_am4_catalog</code>/<code>schedule_hindsight</code>/<code>query_capacity</code>.</li>
+<li><s>Point <code>hearth wake_am4</code> at <code>~/baseline/relaunch-qwen3-baseline.sh</code> (it references non-existent systemd units).</s> <strong>Resolved 2026-07-07:</strong> <code>wake_am4</code> is LIVE and starts the managed <code>b70-planner</code> <code>--user</code> unit &mdash; deliberately <em>not</em> the relaunch script (its dual-card split grabs both B70s, stomping the critic slot + imagegen; runbook gotcha #2 rules nohup-over-SSH out). See <a href="docs/adr/0013-wake-am4-live-serve-truth-single-claimant.md">ADR-0013</a>.</li>
+</ul>
+
+<p class="meta">Provenance: harness <code>hearth/experiments/</code> + <code>hearth/commander/</code> (master @ a0cc2d3).
+Pilot dataset <code>matrix-20260706T052819Z-pilot</code> (12/12 ok). AM4 native Ubuntu; planner woken via
+<code>relaunch-qwen3-baseline.sh</code>, co-resident with idle ComfyUI. Scores by a single OMEN judge — a
+known bias to widen (multi-judge panel) in a later pass.</p>
+
+</body>
+</html>
