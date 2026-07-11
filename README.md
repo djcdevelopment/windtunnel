@@ -9,7 +9,7 @@ the judge scoring it?
 > **[windtunnel → autoreason](AUTOREASON.md)** — what this generalized local-testing lab is, and how it supports
 > the initiative (then hop to the crossover map, the runnable apparatus, and the recommendations).
 
-Full living lab log (styled, byte-for-byte source of record): **[MATRIX-WIND-TUNNEL-LOG.html](MATRIX-WIND-TUNNEL-LOG.html)**
+Full living lab log (styled, byte-for-byte source of record): **[MATRIX-WIND-TUNNEL-LOG.html](https://djcdevelopment.github.io/windtunnel/MATRIX-WIND-TUNNEL-LOG.html)**
 This README is a navigable summary of the same six rounds of experiments.
 
 ## Bottom line
@@ -46,7 +46,7 @@ corrected it, explained it, then caught its own measurement bias. All on idle lo
 - [Round 6 — the judge was a confound](#round-6--the-judge-was-a-confound-the-effect-is-real-but-smaller)
 - [What this changes](#what-this-changes)
 - [Crossover — autoreason bilevel (PR #2)](#crossover--autoreason-bilevel-outer-loop-pr-2)
-  · [recommendations & experiment plan](RECOMMENDATIONS.html)
+  · [recommendations & experiment plan](https://djcdevelopment.github.io/windtunnel/RECOMMENDATIONS.html)
 - [Open threads](#open-threads)
 
 ## What we built (the instrument)
@@ -209,15 +209,15 @@ gate.
 
 Four artifacts, all in this repo:
 
-- **[AUTOREASON-CROSSOVER.html](AUTOREASON-CROSSOVER.html)** — the map: his six signatures × our evidence, his
+- **[AUTOREASON-CROSSOVER.html](https://djcdevelopment.github.io/windtunnel/AUTOREASON-CROSSOVER.html)** — the map: his six signatures × our evidence, his
   mechanism library × our *measured* deltas, and his gate × our judge-robustness math. Where his interests land
   on our data.
 - **[apparatus/](apparatus/)** — a runnable, stdlib-only apparatus that executes the *diagnosis step* of his
   outer loop over our Rounds 5–6 trace. Deterministic, zero tokens (his thesis and our two-economies doctrine).
   `python run_apparatus.py`.
-- **[APPARATUS-PROOF.html](APPARATUS-PROOF.html)** — the proof: real console output (14/14 tests, one diagnosis
+- **[APPARATUS-PROOF.html](https://djcdevelopment.github.io/windtunnel/APPARATUS-PROOF.html)** — the proof: real console output (14/14 tests, one diagnosis
   pass), byte-for-byte.
-- **[RECOMMENDATIONS.html](RECOMMENDATIONS.html)** — six recommendations ranked by how much data backs each,
+- **[RECOMMENDATIONS.html](https://djcdevelopment.github.io/windtunnel/RECOMMENDATIONS.html)** — six recommendations ranked by how much data backs each,
   every one carrying its evidence, its open confound, and the exact (mostly idle-hardware, zero-regeneration)
   experiment that would decide it — plus the data-collection plan.
 
@@ -232,7 +232,7 @@ What the apparatus computes on our trace:
   completeness lens **flips its sign**, and resolving the real +2.8 against 4.15-pt between-lens noise needs
   **≈9 lens-diverse votes**. `--gate-votes 1` has a one-in-three chance of reverting a genuine gain.
 
-**Recommendations** (full version in [RECOMMENDATIONS.html](RECOMMENDATIONS.html), with the data behind each):
+**Recommendations** (full version in [RECOMMENDATIONS.html](https://djcdevelopment.github.io/windtunnel/RECOMMENDATIONS.html), with the data behind each):
 the headline, data-backed message is *don't ship a 1-vote gate* — a single rubric lens flips the sign of a real
 effect, and per-cell rubric disagreement runs to 47 points (mean 6.5). Concise-author is not only the
 top-scoring arm but the **most judge-robust** (lowest cross-rubric spread, 2.6 pts vs baseline 9.0); escalating

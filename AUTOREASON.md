@@ -3,7 +3,7 @@
 **windtunnel is a generalized, local-first testing lab** — controlled evaluation experiments run on
 idle consumer hardware (Nvidia + Intel GPUs) instead of frontier API tokens. It's where I pressure-test
 local models, prompts, and — increasingly — *the evaluation layer itself*. The first study living here is
-the [Matrix Wind-Tunnel](MATRIX-WIND-TUNNEL-LOG.html) (does planner↔critic self-refinement actually improve
+the [Matrix Wind-Tunnel](https://djcdevelopment.github.io/windtunnel/MATRIX-WIND-TUNNEL-LOG.html) (does planner↔critic self-refinement actually improve
 planning output?).
 
 This note is about one thing the lab turns out to be good for, and how it lines up with what
@@ -38,14 +38,14 @@ Concretely, the lab supports the initiative in four ways:
 
 Coming from autoreason PR #2, read in this order:
 
-1. **[AUTOREASON-CROSSOVER.html](AUTOREASON-CROSSOVER.html)** — the map: your six failure signatures, your
+1. **[AUTOREASON-CROSSOVER.html](https://djcdevelopment.github.io/windtunnel/AUTOREASON-CROSSOVER.html)** — the map: your six failure signatures, your
    mechanism library, and your gate, each set against what the lab measured.
-2. **[APPARATUS-PROOF.html](APPARATUS-PROOF.html)** — proof it's real: the diagnosis step running over our
+2. **[APPARATUS-PROOF.html](https://djcdevelopment.github.io/windtunnel/APPARATUS-PROOF.html)** — proof it's real: the diagnosis step running over our
    trace (14/14 tests, zero tokens). Code in [apparatus/](apparatus/).
-3. **[RECOMMENDATIONS.html](RECOMMENDATIONS.html)** — six data-ranked recommendations and the experiment plan,
+3. **[RECOMMENDATIONS.html](https://djcdevelopment.github.io/windtunnel/RECOMMENDATIONS.html)** — six data-ranked recommendations and the experiment plan,
    with live interim results and an open corrections log.
 
-Going deeper: **[MATRIX-WIND-TUNNEL-LOG.html](MATRIX-WIND-TUNNEL-LOG.html)** is the underlying six-rounds study
+Going deeper: **[MATRIX-WIND-TUNNEL-LOG.html](https://djcdevelopment.github.io/windtunnel/MATRIX-WIND-TUNNEL-LOG.html)** is the underlying six-rounds study
 the judge-confound result comes from. The repo [README](README.md) is the lab's own front page.
 
 ## Status
