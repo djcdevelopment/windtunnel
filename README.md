@@ -5,6 +5,10 @@ electricity instead of frontier API tokens. This repo houses the **Matrix Wind-T
 (planner ↔ critic laps) actually improve LLM planning output, and does it depend on the model, the prompt, or
 the judge scoring it?
 
+> **From [autoreason PR #2](https://github.com/NousResearch/autoreason/pull/2)?** Start with
+> **[windtunnel → autoreason](AUTOREASON.md)** — what this generalized local-testing lab is, and how it supports
+> the initiative (then hop to the crossover map, the runnable apparatus, and the recommendations).
+
 Full living lab log (styled, byte-for-byte source of record): **[MATRIX-WIND-TUNNEL-LOG.html](MATRIX-WIND-TUNNEL-LOG.html)**
 This README is a navigable summary of the same six rounds of experiments.
 
