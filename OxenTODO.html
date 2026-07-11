@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OxenTODO — the oxen-planner judge: a debugging log</title>
+<style>
+  :root{--bg:#0f1115;--panel:#171a21;--panel2:#1d2130;--ink:#d8dee9;--dim:#8b95a7;
+        --accent:#e8a33d;--green:#7fbf7f;--red:#d97b7b;--blue:#6fa8dc;--border:#2a2f3a}
+  *{box-sizing:border-box}
+  body{background:var(--bg);color:var(--ink);font:15px/1.55 "Segoe UI",system-ui,sans-serif;margin:0;padding:2rem;max-width:1080px;margin-inline:auto}
+  h1{color:var(--accent);font-size:1.7rem;border-bottom:2px solid var(--accent);padding-bottom:.4rem;margin-bottom:.2rem}
+  h2{color:var(--blue);font-size:1.2rem;margin-top:2.2rem;border-bottom:1px solid var(--border);padding-bottom:.3rem}
+  h3{color:var(--ink);font-size:1.02rem;margin-bottom:.3rem}
+  a{color:var(--blue)}
+  .meta{color:var(--dim);font-size:.85rem}
+  .panel{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:1rem 1.3rem;margin:1rem 0}
+  .step{border-left:4px solid var(--accent)}
+  .good{border-left:4px solid var(--green)}
+  .bad{border-left:4px solid var(--red)}
+  code{font-family:Consolas,monospace;background:var(--panel2);border-radius:4px;padding:.1em .35em;font-size:.88em}
+  pre{background:#0b0d11;border:1px solid var(--border);border-radius:8px;padding:.9rem 1.1rem;overflow-x:auto;
+      font-family:Consolas,monospace;font-size:.8rem;line-height:1.45;color:var(--ink)}
+  pre .r{color:var(--red)} pre .g{color:var(--green)} pre .d{color:var(--dim)} pre .a{color:var(--accent)}
+  table{border-collapse:collapse;width:100%;font-size:.88rem;margin:.7rem 0}
+  th,td{border:1px solid var(--border);padding:.4rem .6rem;text-align:left;vertical-align:top}
+  th{background:var(--panel2);color:var(--blue)}
+  td.n{text-align:right;font-variant-numeric:tabular-nums}
+  .up{color:var(--green)} .down{color:var(--red)}
+  .tag{display:inline-block;padding:.05rem .5rem;border-radius:10px;font-size:.72rem;font-weight:600}
+  .t-good{background:#2a3d2a;color:var(--green)} .t-bad{background:#3d2a2a;color:var(--red)} .t-wrong{background:#3d362a;color:var(--accent)} .t-todo{background:#33323a;color:var(--dim)}
+  ul{margin:.4rem 0}
+  .why{color:var(--dim);font-style:italic}
+  .chk{list-style:none;padding-left:0}
+  .chk li{margin:.5rem 0;padding-left:1.6rem;position:relative}
+  .chk li::before{content:"☐";position:absolute;left:0;color:var(--dim)}
+  .chk li.done::before{content:"☑";color:var(--green)}
+</style>
+</head>
+<body>
+
+<h1>OxenTODO — the oxen-planner judge, a debugging log</h1>
+<p class="meta">2026-07-10 · what happened when we tried to add AM4's <code>oxen-planner</code> (Qwen3-30B-A3B on
+a B70 card) as a third judge model, how it failed, the wrong turn we took, how we caught it, and what we did
+about it. Written as a working log — the open items are at the bottom. Context:
+<a href="RECOMMENDATIONS.html">RECOMMENDATIONS.html</a> R2, <a href="AUTOREASON-CROSSOVER.html">crossover map</a>.</p>
+
+<div class="panel" style="border-left:4px solid var(--green)">
+<h3 style="margin-top:0;color:var(--green)">TL;DR</h3>
+<p>We tried three judge models for the "diversify the judge" experiment. Two (OMEN <code>qwen3-coder:30b</code>,
+<code>qwen2.5:14b</code>) worked cleanly. The third — AM4 <code>oxen-planner</code> — failed most of its scores.
+We first blamed the 300-token judge budget; a direct test <strong>refuted that</strong> (it scores fine at 300).
+The real cause, from the AM4 journal, is the lab's <em>own documented hardware finding</em>: <strong>the 32 GB
+DDR4 host-RAM ceiling</strong>. AM4's preflight guard refuses to start the planner when host RAM is already
+near the limit, so the judge endpoint 502s. Net: oxen-planner is <strong>not a usable judge here</strong>
+(unreliable under load + miscalibrated scores), the reliable cross-model result is the two OMEN models, and the
+open items are listed below.</p>
+</div>
+
+<h2>1 · What we tried</h2>
+<div class="panel step">
+<p>Recommendation <strong>R2</strong> says: to trust a self-improving loop's quality gate, diversify the judge
+by <em>model</em>, not just by rubric. To measure that, re-score the 192 planning finals under the neutral
+rubric with a panel of three distinct judge models:</p>
+<table>
+<tr><th>judge model</th><th>host</th><th>path</th><th>outcome</th></tr>
+<tr><td><code>qwen3-coder:30b</code></td><td>OMEN (RTX 5070)</td><td>Ollama</td><td><span class="tag t-good">CLEAN 192/192</span></td></tr>
+<tr><td><code>qwen2.5:14b</code></td><td>OMEN (RTX 5070)</td><td>Ollama</td><td><span class="tag t-good">CLEAN 192/192</span></td></tr>
+<tr><td><code>oxen-planner</code> (Qwen3-30B-A3B)</td><td>AM4 (2× Intel B70)</td><td>oxen facade :8090 → llama-server :8080</td><td><span class="tag t-bad">FAILED most cells</span></td></tr>
+</table>
+<p class="why">The AM4 leg was the interesting one — a different serving stack (SYCL llama-server on Intel B70)
+and a genuinely different deployment, exactly the kind of judge diversity R2 is about.</p>
+</div>
+
+<h2>2 · How it broke</h2>
+<div class="panel bad">
+<p>The first panel sweep recorded 192 oxen-planner rows, but <strong>167 were <code>None</code></strong> — only
+<strong>25 valid scores</strong>, and those only on two of the four arms:</p>
+<pre>am4-oxen-planner   total=192  valid= <span class="r">25</span>  none=<span class="r">167</span>  arms={baseline:23, minimalist-critic:2}
+omen-qwen3-coder   total=192  valid=<span class="g">192</span>  none=0
+omen-qwen2.5:14b   total=192  valid=<span class="g">192</span>  none=0</pre>
+<p>The sweep script stored no error text on the failed rows — just <code>score: null</code> — so at first the
+failure was shapeless. That missing error field is the first lesson (see TODO).</p>
+</div>
+
+<h2>3 · The wrong turn — and how we caught it</h2>
+<div class="panel" style="border-left:4px solid var(--accent)">
+<p><span class="tag t-wrong">HYPOTHESIS (WRONG)</span> oxen-planner is a reasoning-heavy model; it probably
+emitted a long chain-of-thought and <strong>overran the 300-token judge budget</strong> before printing
+<code>SCORE:</code>. Plausible, and it got written into an early draft of R2.</p>
+<p><span class="tag t-good">VERIFICATION</span> Rather than ship the guess, we ran the judge prompt directly at
+two budgets:</p>
+<pre>oxen-planner  max_tokens=<span class="a">300</span>   ok=True  chars=<span class="g">9</span>   -> "<span class="g">SCORE: 95</span>"
+oxen-planner  max_tokens=<span class="a">2048</span>  ok=True  chars=<span class="g">9</span>   -> "<span class="g">SCORE: 94</span>"</pre>
+<p><strong>Refuted.</strong> oxen-planner answers in ~9 characters — it does <em>not</em> overrun 300 tokens.
+The budget was never the problem. (The valid residue of the idea — that a terse bare-score judge might be worth
+replacing with a reasoning judge — survives as a separate open thread; it just wasn't <em>this</em> bug.)</p>
+<p><span class="tag t-good">THE TELL</span> With the format theory dead, we looked at the failure <em>pattern</em>
+in file order — and it wasn't random:</p>
+<pre>score present(.) / None(X), in order:
+<span class="g">....</span><span class="r">X</span><span class="g">.....................</span><span class="r">XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX…(X to the end)</span></pre>
+<p>The first ~25 finals scored clean, then <strong>every remaining cell failed</strong>. That "clean, then dead
+to the end" shape is a <em>died-partway</em> signature — an availability failure, not a model/format one. The
+endpoint went down mid-sweep and never recovered, and with no retry the script silently logged 167 nulls.</p>
+</div>
+
+<h2>4 · The real cause — the lab's own hardware finding</h2>
+<div class="panel bad">
+<p>A retry-hardened re-run (below) eventually surfaced the concrete error the first sweep had swallowed —
+<code>HTTP 502 Bad Gateway</code> from the facade, meaning the facade is up but its upstream (the card-0
+llama-server on <code>:8080</code>) is down. The AM4 journal says exactly why:</p>
+<pre>b70-planner.service: Started - B70 planner - Qwen3-30B single-card SYCL0 :8080
+serve-planner.sh: <span class="r">b70-preflight REFUSED: planner — host RAM already 28GiB used
+  (> 27GiB ceiling, 32GB DDR4). Not starting to avoid an OOM cascade.
+  Free a slot ('systemctl --user stop b70-critic') or lower a context.</span>
+b70-planner.service: Failed with result 'exit-code'   <span class="d">(looping every ~5s)</span></pre>
+<p><strong>This is the wind-tunnel's own documented constraint</strong> —
+<a href="MATRIX-WIND-TUNNEL-LOG.html">"32 GB DDR4 is the binding constraint, not VRAM."</a> The B70s hold 64 GB
+of VRAM, but the AM4 host has only 32 GB of DDR4, and llama-server keeps host-side KV/compute buffers. Under
+sustained judge load the host RAM sits near the ceiling; AM4's <em>own preflight guard</em> then correctly
+refuses to (re)start the planner to avoid an OOM cascade. So the judge endpoint stays down → 502 → null scores.</p>
+<p class="why">The evaluation-layer failure and the hardware finding are the same finding. It isn't the model,
+the prompt, or the token budget — it's the 32 GB ceiling, exactly where the lab said the pressure would be.</p>
+</div>
+
+<div class="panel bad">
+<h3 style="margin-top:0">Second strike: the scores are miscalibrated too</h3>
+<p>Even on the cells oxen-planner <em>did</em> score, the values run <strong>1–98 with genuine <code>1</code>
+outliers</strong> on ordinary planning responses — a scale it isn't holding to (0–100). So beyond the
+reliability problem, it's a <em>noisy</em> judge. Two independent reasons it's unfit for this panel.</p>
+</div>
+
+<h2>5 · What we did about it</h2>
+<div class="panel good">
+<ul>
+<li><strong>Retry-hardened re-run</strong> (<code>hearth/experiments/rejudge_oxen.py</code>): per-cell retry
+×4 with linear backoff, a 30 s cooldown after consecutive failures (let an evicted model reload), and — the
+fix for lesson #1 — <strong>an error field on every row</strong>. This salvaged <strong>100 valid scores across
+all four arms</strong> (baseline 40, minimalist 23, thorough 23, concise 14) vs the first sweep's 25 on two
+arms, before the host-RAM ceiling took the endpoint down hard.</li>
+<li><strong>Banked the reliable result.</strong> The two OMEN models give a clean, full-192 cross-model number
+(per-cell |diff| ~4.6, comparable to the ~6.5 cross-rubric spread). That is the R2 answer; oxen-planner is
+documented as unsuitable, not silently dropped.</li>
+<li><strong>Corrected the record openly.</strong> The wrong token-budget claim is fixed in R2 and logged in the
+<a href="RECOMMENDATIONS.html">RECOMMENDATIONS</a> corrections log — the mistake stays visible on purpose.</li>
+<li><strong>Did not bulldoze the machine.</strong> The fix (<code>systemctl --user stop b70-critic</code> to
+free a slot) is a change to AM4's running config, left for the operator to decide rather than forced mid-run.
+A <code>wake_am4</code> attempt was correctly <em>refused by the same preflight guard</em> — the guard is
+working as designed.</li>
+</ul>
+</div>
+
+<h2>6 · TODO / open items</h2>
+<div class="panel">
+<ul class="chk">
+<li class="done">Refute the token-budget hypothesis (direct 300 vs 2048 test) — <span class="up">done</span>.</li>
+<li class="done">Root-cause the endpoint failure (journalctl → host-RAM ceiling) — <span class="up">done</span>.</li>
+<li class="done">Add retry + backoff + <strong>error logging</strong> to the judge re-run — <span class="up">done</span> (<code>rejudge_oxen.py</code>).</li>
+<li class="done">Bank the reliable 2-model cross-model result for R2 — <span class="up">done</span>.</li>
+<li><strong>Decide whether oxen-planner is worth completing at all.</strong> Recommendation: <em>no</em> — it's
+unstable under load <em>and</em> miscalibrated. If a third judge is wanted, pick a <em>reliable, cross-family</em>
+model (not another Qwen), which also better tests the model-diversity question R2 left open.</li>
+<li><strong>If we do complete it:</strong> free the AM4 slot first (<code>systemctl --user stop b70-critic</code>
+or lower the planner/critic context below the 27 GiB ceiling), then re-run the ~92 missing cells.</li>
+<li><strong>Harden the judge harness (real fix):</strong> bake per-node liveness + retry + error logging into
+the panel sweep itself (the original <code>rejudge_panel.py</code> had none), and make an AM4 judge leg
+<em>preflight-aware</em> — check the host-RAM ceiling / <code>wake_am4</code> before starting a long sweep
+rather than discovering the ceiling 25 cells in.</li>
+<li><strong>Reasoning-judge experiment</strong> (the valid residue of the 300-token point): test a
+chain-of-thought judge with a real token budget and see whether it calibrates tighter than the terse
+<code>SCORE: N</code> format — possibly shrinking the cross-rubric/cross-model noise the gate has to fight.</li>
+<li><strong>Investigate the miscalibration</strong> separately: is the <code>1</code>-outlier an SYCL/oxen
+serving artifact, a sampling-temperature effect, or the model genuinely using a different scale? Cheap to probe
+once AM4 has headroom.</li>
+</ul>
+</div>
+
+<p class="meta">Provenance: sweeps under <code>hearth/var/experiments/study-20260707T073708Z/</code>
+(<code>panel_rejudge.jsonl</code> first sweep, <code>panel_oxen_rerun.jsonl</code> retry re-run). Root-cause
+line from <code>journalctl --user -u b70-planner.service</code> on AM4 (192.168.12.233), 2026-07-11. Hardware
+finding: <a href="MATRIX-WIND-TUNNEL-LOG.html">MATRIX-WIND-TUNNEL-LOG.html</a>.</p>
+
+</body>
+</html>

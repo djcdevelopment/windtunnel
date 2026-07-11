@@ -57,25 +57,26 @@ regeneration, runs on sunk local compute · <span class="econ">[IDLE-GEN]</span>
 B70/OMEN · <span class="econ">[BUILD]</span> a harness change first.</p>
 </div>
 
-<div class="panel" style="border-left:4px solid var(--accent)">
-<h3 style="margin-top:0;color:var(--accent)">Interim measured results — sweeps in progress (2026-07-10)</h3>
-<p>Experiments 1 and 2 (the two <span class="econ">[IDLE-JUDGE]</span> runs) are <strong>running now</strong> on
-idle OMEN/AM4; full numbers land ~18:30 and these preliminary reads <em>may shift</em>. Three clean signals
-already, folded into R1/R2 below:</p>
+<div class="panel" style="border-left:4px solid var(--green)">
+<h3 style="margin-top:0;color:var(--green)">Measured results — experiments complete (2026-07-10)</h3>
+<p>Experiments 1 and 2 (the two <span class="econ">[IDLE-JUDGE]</span> runs) finished on idle OMEN/AM4. Final
+numbers are folded into R1/R2 below; three headline signals:</p>
 <ul>
-<li><strong>The judge is self-consistent; the noise is which lens/model you pick.</strong> Repeat-scoring the
-same judge under the same rubric (K=6) gives a within-cell sampling std of only <strong>~1.0 pt</strong>
-(baseline arm, n=22 so far) — against ~4.6–6.5 pt disagreement <em>across</em> rubrics/models. So the gate's
-leverage is <strong>diversity, not repetition</strong>.</li>
-<li><strong>concise-author wins under a second, independent judge model.</strong> Both OMEN
-<code>qwen3-coder:30b</code> (91.2) and OMEN <code>qwen2.5:14b</code> (87.2) rank it top — the effect survives a
-model swap, not just a rubric swap (supports R3).</li>
-<li><strong>A long unattended judge sweep needs liveness/retry.</strong> The AM4 <code>oxen-planner</code> judge
-scored its first ~25 finals cleanly, then returned <strong>None for the remaining ~167</strong> — a mid-sweep
-AM4 card-0 outage, <em>not</em> a token-budget or format fault: a direct call afterward returns a clean
-<code>SCORE</code> at both 300 and 2048 tokens. Consistent with AM4's known host-RAM/eviction fragility. The
-model is a fine judge; the sweep just lacked per-node retry. (Separately — the terse 300-token "SCORE: N" format
-is worth revisiting; a reasoning judge with a real budget may calibrate better.)</li>
+<li><strong>The judge is near-deterministic on repeat; the noise is which lens/model you pick.</strong>
+Repeat-scoring the same judge/rubric (K=6, full 192 cells) gives a within-cell sampling std of just
+<strong>0.40 pt (median 0.00)</strong> — over half the cells scored identically all six times — against
+~4.6–6.5 pt disagreement <em>across</em> rubrics/models. Repeat votes buy almost nothing; the gate's leverage is
+<strong>diversity</strong>. Resolving the measured <strong>+3.05-pt</strong> concise-author effect takes ~1
+repeat vote but <strong>~19 lens-diverse votes</strong>.</li>
+<li><strong>concise-author wins under a second, independent judge model.</strong> Across the full 192, both OMEN
+<code>qwen3-coder:30b</code> (91.2) and <code>qwen2.5:14b</code> (87.2) rank it top — the effect survives a model
+swap, not just a rubric swap (supports R3).</li>
+<li><strong>The third judge model failed — and it's the lab's own hardware finding.</strong> AM4
+<code>oxen-planner</code> failed most of its scores; root cause is the <strong>32 GB DDR4 host-RAM ceiling</strong>
+(AM4's preflight refuses to start the planner → 502), not a token-budget or format fault — and it's miscalibrated
+besides (scores 1–98). Full debugging log:
+<a href="https://djcdevelopment.github.io/windtunnel/OxenTODO.html">OxenTODO</a>. The reliable cross-model result
+is the two OMEN models.</li>
 </ul>
 </div>
 
@@ -86,10 +87,12 @@ These stay visible on purpose — the same reason the wind-tunnel log keeps its 
 <ul>
 <li><strong>2026-07-10 — claimed the 300-token judge budget caused the oxen-planner failure.</strong>
 <span class="down">Wrong.</span> A direct check refuted it: oxen-planner returns a clean <code>SCORE: 95</code>
-in ~9 chars at both 300 and 2048 tokens. Real cause: a mid-sweep AM4 card-0 outage (first ~25 finals clean, then
-167 None, no retry). Corrected in R2 + the banner; a retry-hardened re-run is under way to land the real 3-model
-panel. The valid residue — a terse bare-score judge may be worth replacing with a reasoning judge — is kept as an
-open thread, not discarded.</li>
+in ~9 chars at both 300 and 2048 tokens. Real cause, from the AM4 journal: the <strong>32 GB DDR4 host-RAM
+ceiling</strong> — the preflight guard refuses to start the planner, so the endpoint 502s. It's the lab's own
+documented hardware finding. A retry-hardened re-run salvaged 100 scores but oxen-planner is disqualified as a
+judge (unstable under load + miscalibrated); the reliable cross-model result uses the two OMEN models. Full log:
+<a href="https://djcdevelopment.github.io/windtunnel/OxenTODO.html">OxenTODO</a>. The valid residue — a terse
+bare-score judge may be worth replacing with a reasoning judge — is kept as an open thread, not discarded.</li>
 <li><strong>2026-07-10 — hypothesised cross-model disagreement would be <em>larger</em> than cross-rubric (~6.5).</strong>
 <span class="down">Falsified.</span> Measured cross-model |diff| came in at ~4.6 — comparable, slightly below. R2
 pivoted from the guess to the data, with the same-family-Qwen caveat now stated.</li>
@@ -106,33 +109,35 @@ of a real effect (concise-author reads <span class="up">+2.8</span> under the ne
 <strong>2.86×</strong>. New, sharper number: the <strong>per-cell</strong> disagreement across the three
 rubrics averages <strong>6.5 pts</strong> (median 7, <strong>max 47</strong>) — that is the noise a gate faces
 at the level it actually decides, per item. A 1-vote gate has a one-in-three chance of reverting a genuine gain.</p>
-<p><span class="lbl">Measured (preliminary)</span> Exp 1 now supplies the missing piece: within-judge sampling
-std is only <strong>~1.0 pt</strong> (baseline, n=22, K=6) — a single judge is nearly deterministic, so
-<em>repeat</em> votes of the same judge/rubric barely help. The real noise is lens/model choice (~4.6–6.5 pt),
-which is what the gate must average down. Reframed rule: don't spend votes on repeats — spend them on
-<strong>diverse lenses/models</strong>. The diverse-vote count to resolve a +2.8 effect against that lens noise
-lands around <strong>~9–22</strong> (final number pending the full run + the concise/baseline variance cells).</p>
-<p><span class="lbl">Experiment</span> <span class="econ">[IDLE-JUDGE]</span> re-score the same 192 finals
-<strong>K≈8×</strong> each under the neutral rubric at judge temperature &gt; 0. Decompose total variance into
-within-rubric (sampling) + between-rubric (lens). No regeneration; the harness already loops
-<code>score_proposal</code>. Half a night on OMEN.</p>
-<p><span class="lbl">Decides</span> the real <code>--gate-votes</code> count for autoreason's gate, and whether
-the dominant noise is sampling or lens choice (tells David what to spend votes on).</p>
+<p><span class="lbl">Measured (final)</span> The full run (192 cells, K=6) closes it: within-judge sampling std
+is just <strong>0.40 pt (median 0.00)</strong> — the OMEN judge is near-deterministic on repeat, so
+<em>repeat</em> votes add almost nothing. All the real uncertainty is lens/model choice (~4.6–6.5 pt). Reframed
+rule, now with a number: don't spend votes on repeats — spend them on <strong>diverse lenses/models</strong>. To
+resolve the measured <strong>+3.05-pt</strong> concise-author effect at 2σ takes ~1 repeat vote but
+<strong>~19 lens-diverse votes</strong>.</p>
+<p><span class="lbl">Method (done)</span> <span class="econ">[IDLE-JUDGE]</span> re-scored all 192 finals
+<strong>K=6×</strong> under the neutral rubric on OMEN and decomposed within-cell (sampling) vs between-lens
+variance. Zero regeneration; harness looped <code>score_proposal</code>. ~1 night on idle OMEN.</p>
+<p><span class="lbl">Decided</span> the real <code>--gate-votes</code> is <strong>~19 lens-diverse votes</strong>
+(≈1 if you only repeat one judge); the dominant noise is lens/model choice, not sampling — so the gate budget
+should buy diverse judges, not repeats.</p>
 </div>
 
 <div class="panel rec">
 <h3>R2 · Diversify judge <em>models</em>, not just rubrics — on reliable, in-format judges. <span class="tag t-dir">DIRECTIONAL</span></h3>
 <p><span class="lbl">Backed by</span> Every prior "multi-lens" result varied the rubric on a <strong>single
 model</strong> (OMEN <code>qwen3-coder:30b</code>). The scorer already supports a multi-model panel.</p>
-<p><span class="lbl">Measured (preliminary)</span> A 2nd judge model (OMEN <code>qwen2.5:14b</code>), 132 finals so
-far: cross-<em>model</em> per-cell |diff| is <strong>~4.6 pt</strong> (median 7, max 55) — <em>comparable to,
-slightly below</em> the ~6.5-pt cross-rubric spread, <em>not</em> the larger figure I'd guessed. So for
-same-family Qwen judges, model diversity ≈ rubric diversity — both matter, neither dominates — and both models
-rank concise-author top. The caveat that became a finding: the AM4 <code>oxen-planner</code> leg failed
-mid-sweep — clean for ~25 finals, then None for ~167 (an AM4 card-0 outage, <em>not</em> the model: a direct
-call afterward scores fine at 300 and 2048 tokens). So a real model-diversity gate needs per-node liveness/retry
-on a long unattended sweep — and, separately, the terse 300-token "SCORE: N" judge format is worth revisiting: a
-reasoning judge with a real token budget may calibrate better than a bare-score one.</p>
+<p><span class="lbl">Measured (final)</span> A 2nd judge model (OMEN <code>qwen2.5:14b</code>), full 192 finals:
+cross-<em>model</em> per-cell |diff| is <strong>4.6 pt</strong> (median 7, max 55) — <em>comparable to, slightly
+below</em> the ~6.5-pt cross-rubric spread, <em>not</em> the larger figure I'd guessed. So for same-family Qwen
+judges, model diversity ≈ rubric diversity — both matter, neither dominates — and both models rank concise-author
+top (qwen3-coder 91.2, qwen2.5 87.2). The intended 3rd model, AM4 <code>oxen-planner</code>, is
+<strong>disqualified</strong>: it kept crashing the card-0 endpoint under load — root cause is AM4's 32 GB DDR4
+host-RAM ceiling (preflight refusal → 502), the lab's own hardware finding, <em>not</em> a token-budget/format
+fault — and its scores are miscalibrated (1–98). Full debugging log:
+<a href="https://djcdevelopment.github.io/windtunnel/OxenTODO.html">OxenTODO</a>. Two lessons: a real
+model-diversity gate needs per-node liveness/retry, and the terse 300-token "SCORE: N" format is worth
+revisiting — a reasoning judge with a real budget may calibrate better.</p>
 <p><span class="lbl">Still open</span> whether a genuinely different model <em>family</em> (not two Qwens)
 decorrelates more than rubrics do — the current pair is same-family, which likely understates the model axis.</p>
 <p><span class="lbl">Decides</span> whether "diversify judge lenses" should mean different <strong>models</strong>,
@@ -207,8 +212,8 @@ that presents both orders and records the swap; <code>position_bias</code> = ord
 <h2>The data-collection plan at a glance</h2>
 <table>
 <tr><th>#</th><th>experiment</th><th>economy</th><th>regen?</th><th>unlocks</th><th>status</th></tr>
-<tr><td>1</td><td>repeat-judge variance decomposition (K=6× neutral)</td><td class="econ">IDLE-JUDGE</td><td>no</td><td>R1 gate-vote count</td><td class="up">RUNNING</td></tr>
-<tr><td>2</td><td>3-model judge panel over the 192 finals</td><td class="econ">IDLE-JUDGE</td><td>no</td><td>R2 model-vs-rubric diversity</td><td class="up">RUNNING</td></tr>
+<tr><td>1</td><td>repeat-judge variance decomposition (K=6× neutral)</td><td class="econ">IDLE-JUDGE</td><td>no</td><td>R1: ~19 diverse votes</td><td class="up">DONE</td></tr>
+<tr><td>2</td><td>3-model judge panel (2 usable; oxen disqualified)</td><td class="econ">IDLE-JUDGE</td><td>no</td><td>R2: cross-model 4.6 ≈ rubric 6.5</td><td class="up">DONE</td></tr>
 <tr><td>3</td><td>pairwise-judge mode (harness change)</td><td class="econ">BUILD</td><td>—</td><td>R3, R6, position_bias</td><td class="up">P1</td></tr>
 <tr><td>4</td><td>pairwise re-score concise vs baseline (after #3)</td><td class="econ">IDLE-JUDGE</td><td>no</td><td>R3 transfer check</td><td>P2</td></tr>
 <tr><td>5</td><td>induce-premature-convergence A/B (escalation on/off)</td><td class="econ">IDLE-GEN</td><td>yes</td><td>R5 in-regime effect</td><td>P2</td></tr>
@@ -226,10 +231,10 @@ token. Free re-analysis already done: the per-cell rubric spread in R1/R3/R5 cam
 <ol>
 <li><strong>Tell David: don't ship <code>--gate-votes 1</code>.</strong> A single lens flips a real sign here;
 per-item rubric disagreement runs to 47 points. That's the load-bearing, data-backed message (R1).</li>
-<li><strong>Experiments 1–2 are running now</strong> (idle judge-only; full numbers ~18:30). The preliminary
-read already sharpens R1: the judge is self-consistent (~1 pt), so the gate must <em>diversify</em> lenses/models,
-not repeat — and model diversity ≈ rubric diversity so far, with the caveat that a judge model must actually
-parse in-format (oxen-planner didn't).</li>
+<li><strong>Experiments 1–2 are done</strong> (idle judge-only). Result: the judge is near-deterministic on
+repeat (σ 0.40), so the gate must <em>diversify</em> — <strong>~19 lens-diverse votes</strong> to resolve a
++3.05-pt effect, ~1 if you only repeat. Model diversity ≈ rubric diversity (4.6 vs 6.5); the 3rd model died on
+AM4's host-RAM ceiling (<a href="https://djcdevelopment.github.io/windtunnel/OxenTODO.html">OxenTODO</a>).</li>
 <li><strong>Build the pairwise-judge mode</strong> (R6) — it's the small change that lets everything else plug
 into his actual tournament, and it's the only way to give his <code>position_bias</code> signature a number.</li>
 </ol>
