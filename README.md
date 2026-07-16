@@ -9,6 +9,12 @@ the judge scoring it?
 > **[windtunnel → autoreason](AUTOREASON.md)** — what this generalized local-testing lab is, and how it supports
 > the initiative (then hop to the crossover map, the runnable apparatus, and the recommendations).
 
+> **Want to build the instrument yourself?** The **[HEARTH workbook](workbook/)** (styled:
+> [HEARTH-WORKBOOK.html](https://djcdevelopment.github.io/windtunnel/HEARTH-WORKBOOK.html)) is a ~90-minute guide
+> to the always-on local MCP gateway this lab's harness descends from: every agent tool call logged to a JSONL
+> manifest, grunt work offloaded from your frontier agent to your own GPU. One Python file, checkpoints at every
+> step, the traps included.
+
 Full living lab log (styled, byte-for-byte source of record): **[MATRIX-WIND-TUNNEL-LOG.html](https://djcdevelopment.github.io/windtunnel/MATRIX-WIND-TUNNEL-LOG.html)**
 This README is a navigable summary of the same six rounds of experiments.
 
