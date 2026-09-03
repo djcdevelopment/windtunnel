@@ -1,9 +1,14 @@
 # windtunnel
 
-Local benchmarking across Nvidia and Intel consumer hardware — planning-quality experiments run on idle
-electricity instead of frontier API tokens. This repo houses the **Matrix Wind-Tunnel**: does self-refinement
-(planner ↔ critic laps) actually improve LLM planning output, and does it depend on the model, the prompt, or
-the judge scoring it?
+Local benchmarking across Nvidia and Intel consumer hardware — controlled experiments run on idle electricity
+instead of frontier API tokens. **Two wind tunnels live here, and they found the same thing one level apart:**
+
+- **The Matrix Wind-Tunnel** — does self-refinement (planner ↔ critic laps) actually improve LLM planning
+  output, and does it depend on the model, the prompt, or the judge scoring it? Six rounds, ending with the
+  discovery that the **judge** shaped the results more than the thing under test.
+- **[The hardware wind tunnel](#the-hardware-wind-tunnel--the-same-confound-one-level-down)** — the same method pointed at the
+  machines this lab benchmarks *on*. Five of its own headline hardware numbers went back through the tunnel;
+  **none survived unchanged**, and the culprit was again the instrument, not the subject.
 
 > **From [autoreason PR #2](https://github.com/NousResearch/autoreason/pull/2)?** Start with
 > **[windtunnel → autoreason](AUTOREASON.md)** — what this generalized local-testing lab is, and how it supports
@@ -16,7 +21,7 @@ the judge scoring it?
 > step, the traps included.
 
 Full living lab log (styled, byte-for-byte source of record): **[MATRIX-WIND-TUNNEL-LOG.html](https://djcdevelopment.github.io/windtunnel/MATRIX-WIND-TUNNEL-LOG.html)**
-This README is a navigable summary of the same six rounds of experiments.
+This README is a navigable summary of the same six rounds — plus the hardware round that followed them.
 
 ## Bottom line
 
@@ -222,6 +227,9 @@ multi-rubric judging, or the scores measure the ruler as much as the work.
 ## The hardware wind tunnel — the same confound, one level down
 
 > **August 2026 · five headline claims re-measured under controlled conditions, receipt by receipt.**
+> Written up for a general audience in
+> [*What Consumer Hardware Actually Does*](https://steppeintegrations.com/articles/what-consumer-hardware-actually-does/),
+> which carries the charts, the full method, and the rest of the corpus these five claims came from.
 
 Round 6's lesson was that the *judge* shaped the result more than the thing under test. Six weeks later the
 same method was pointed at the layer below — at the machines this lab benchmarks on rather than the models it

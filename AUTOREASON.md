@@ -52,3 +52,10 @@ the open. → [OxenTODO](https://djcdevelopment.github.io/windtunnel/OxenTODO.ht
 
 Living documents. The two judge-robustness experiments above are **complete** (192 cells, K=6, run on idle
 OMEN/AM4). The corrections log is deliberate — a lab that visibly corrects itself is more trustworthy, not less.
+
+⚠ **Rig note (added 2026-09-03).** Those runs used OMEN plus an AM4 host carrying two Intel B70s. The cards
+moved to OMEN in a 2026-08-20 rebuild, so the AM4 host-RAM ceiling cited above is **historical** — it was real
+when it disqualified that judge model, and it does not describe the current rig. The numbers stand as
+measured. The lab has since put its own *hardware* claims through the same audit it gave its judge, with the
+same result: [the hardware wind tunnel](README.md#the-hardware-wind-tunnel--the-same-confound-one-level-down) — five headline
+numbers re-measured, none survived unchanged, and the instrument was the confound both times.
