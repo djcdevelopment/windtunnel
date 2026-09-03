@@ -35,6 +35,11 @@ This README is a navigable summary of the same six rounds of experiments.
 The value wasn't the answer about laps (it's "meh") — it was the method: the wind tunnel flagged an effect,
 corrected it, explained it, then caught its own measurement bias. All on idle local hardware, overnight.
 
+> **The sequel is one layer down.** Six weeks later the same method was pointed at the *hardware* this lab
+> benchmarks on. Five of its own headline numbers went back through the tunnel and **none survived**: one
+> refuted, one corrected, one mislabeled, one refuted-and-reassigned, one located and found to be
+> model-specific. See **[the hardware wind tunnel](#the-hardware-wind-tunnel--the-same-confound-one-level-down)**.
+
 ![Refinement laps vs. planning score, Round 6](assets/lap-score-round6.svg)
 
 ## Contents
@@ -51,6 +56,7 @@ corrected it, explained it, then caught its own measurement bias. All on idle lo
 - [Round 5 — over-refinement is a prompt artifact](#round-5--the-over-refinement-collapse-is-a-prompt-artifact-not-a-law)
 - [Round 6 — the judge was a confound](#round-6--the-judge-was-a-confound-the-effect-is-real-but-smaller)
 - [What this changes](#what-this-changes)
+- [The hardware wind tunnel — the same confound, one level down](#the-hardware-wind-tunnel--the-same-confound-one-level-down)
 - [Crossover — autoreason bilevel (PR #2)](#crossover--autoreason-bilevel-outer-loop-pr-2)
   · [recommendations & experiment plan](https://djcdevelopment.github.io/windtunnel/RECOMMENDATIONS.html)
 - [Open threads](#open-threads)
@@ -76,6 +82,12 @@ true for *planning* tasks — and does it depend on which model plans vs. critiq
 | Prompt | choose-next-agent · escalate-or-not · plan-skeleton (+3 more archetypes from Round 4) |
 | Laps | 1–4 self-refinement rounds |
 | Score | held-out judge panel (OMEN `qwen3-coder:30b`), 0–100 rubric |
+
+> ⚠ **Rig provenance — this is the machine as it was, not as it is.** The two Intel B70s left the AM4 host in
+> a 2026-08-20 rebuild and now run in OMEN under Windows; the `qwen3-coder:30b` Ollama endpoint and the oxen
+> facade on `:8080` are both retired. Every number in Rounds 1–6 was measured on the rig described above and
+> **stands as measured**. Nothing below has been re-run on the current hardware — and a re-run would not be a
+> correction of it, only a fact about a different machine.
 
 ## Finding 1 — refinement is not a free win *(superseded)*
 
@@ -143,6 +155,10 @@ Doubling task coverage to 6 planning archetypes overturned the preliminary findi
 
 ## Hardware finding — 32GB DDR4 is the binding constraint, not VRAM
 
+> ⚠ **Historical — that configuration no longer exists.** This describes the AM4 host as it ran through July
+> 2026. The constraint below was real on that machine; the cards moved hosts on 2026-08-20 and it does not
+> bind the current one.
+
 The B70s hold 64GB VRAM total, but AM4 has only **32GB DDR4 host RAM**. SYCL llama-server keeps host-side
 KV + compute buffers even with `-ngl 99`; co-loading a 30B planner + 14B critic at generous contexts
 OOM-killed the planner mid-run. Dropping the critic 32k→8k ctx freed ~7 GiB and restored headroom.
@@ -203,6 +219,113 @@ multi-rubric judging, or the scores measure the ruler as much as the work.
 - The matrix earned its keep four times: found an effect → corrected it → explained it → caught its own
   measurement bias. That last step is the one most experiments skip.
 
+## The hardware wind tunnel — the same confound, one level down
+
+> **August 2026 · five headline claims re-measured under controlled conditions, receipt by receipt.**
+
+Round 6's lesson was that the *judge* shaped the result more than the thing under test. Six weeks later the
+same method was pointed at the layer below — at the machines this lab benchmarks on rather than the models it
+scores. It found the identical failure mode: the **benchmark harness** and the **machine's state at the moment
+of measurement** had shaped five separate published numbers more than the hardware did.
+
+Five headline claims from this lab's own hardware notes went back through the tunnel. **None survived
+unchanged.**
+
+| Claim as published | Verdict | The citable form |
+|---|---|---|
+| `-ub 1024` causes a **~4× decode regression** | **REFUTED** | Decode-neutral (**+0.4%**, inside drift); prefill **−1.3% @512, +5.8% @2048, +12.3% @8192**. The flag was **promoted**, not reverted. |
+| Dense seats run **~6× slower** per seat than the MoE | **CORRECTED** | **4.5–5.0×** (4.51× / 4.65× dual, 4.76× / 5.03× single). The dense side reproduced almost exactly; the **MoE side was a llama-bench number**. |
+| **121.6 tok/s**, "full-B70 dual-split" | **MISLABELED** | Its own receipt reads `tensor_split "1.00"` — a **single-card** run. Server, solo: **116.35 single / 109.97 dual**. |
+| Co-residency taxes the **arriving co-tenant** −42% | **REFUTED + REASSIGNED** | The co-tenant pays **−2.3% to −3.9%**, inside its own drift floor. The cost lands on the **incumbent** instead: **−15% to −28%** while sharing, **fully recovered** afterwards. |
+| Dual-split buys **+27–42% prefill**, costs −5% decode | **LOCATED — and model-specific** | For the MoE the sign changes between **512 and 1024** tokens: −1.8% @512, +37.9% @1024, **+72.2% @8192**. Decode cost **~5–6%**, not a precise value. |
+
+**One habit distorted three of the five.** `llama-bench` has no `-np`, so it cannot express a serving
+topology at all, and it parses `-ts` differently from the rest of llama.cpp. A bench number and a server
+number are therefore not the same measurement — and pairing them silently manufactures a ratio. Each of the
+three was internally plausible and individually well documented, which is precisely why vigilance was not
+enough and a gate was.
+
+### The three gates that came out of it
+
+**R8 — instrument admissibility.** *A ratio, delta, crossover, or promotion claim is inadmissible unless both
+sides were produced by the same instrument and compatible execution semantics, or an explicit
+instrument-equivalence experiment exists.* Not a caution to weigh — a precondition. A claim that fails it is
+not *weak*, it is **not a claim**, and it does not enter a note, a decision record, or a commit message.
+
+**R9 — effect resolution and hypothesis exclusion are separate verdicts. Report both.** "Can I distinguish
+this effect from zero?" and "can I exclude the claim under test?" have different answers far more often than
+they look. The co-residency probe measured **−3.9%** against a **5.24%** drift floor: the point estimate is
+**unresolvable**, while **−42% is excluded by more than 3× that floor**. The first version of the probe
+returned a single `INCONCLUSIVE` and would have thrown away a decisive refutation. A probe that cannot say
+*"I don't know the value, and I know it isn't that"* is under-reporting.
+
+**R10 — recovery after intervention is not evidence that the intervention caused it.** The sequence *recent
+change → degradation → revert → recovery* looks overwhelmingly causal and is not. It read **65 → 97** on a
+single-arm revert and came within an inch of being written up as "my own promotion caused a 33% regression".
+Interleaving the arms found both configurations at **~97–98**: a **state change read as a config effect** —
+the same error the original claim had made, on the same flag, one day after the rule against it was written.
+The dangerous errors are not absurd explanations; they are explanations with excellent narratives and
+insufficient controls.
+
+### The machine's state decides the verdict
+
+This is the hardware analogue of the judge confound, and the single most useful result here for anyone
+benchmarking a local model.
+
+| What | Measured |
+|---|---|
+| **Idle collapse** | 0 / 30 / 60 s idle → **106.5** tok/s, flat. **120 s → 39.5** (replicated 39.71 / 39.54). Then a stable **~27.5** plateau. |
+| **The fix** | A **one-token request every 20 s holds 104.83** — indistinguishable from fresh. ⚠ It *prevents* the transition; it does **not** reverse one. |
+| **First-request stall** | **~11.5 s**, size-independent — and often **invisible to the server's own timings**: reported `prompt_ms 47.1` while the slot actually spanned **11.54 s**. |
+| **Not one baseline** | **Four** stable levels in one night (~106, ~97–99, ~65, ~27.5), with transitions in **both** directions and no intervention. |
+
+The last row is the one that changes practice. A published throughput figure is a **reference for an epoch**,
+not the machine's capacity — and ⚠ a shared epoch does not make two readings comparable, because multiple
+regimes occurred inside one. Anyone querying a local model every few minutes is permanently past the idle
+threshold, so the regime the benchmark was published in is not the regime their machine is in.
+
+**Where the loss goes.** In the degraded state, throughput falls **primarily because the GPU spends
+substantially more wall-clock time not busy** between approximately normal units of work: GPU busy per token
+moved **8.811 → 9.297 ms (+5.5%)** while wall per token moved **9.272 → 18.298 ms (+97.4%)**, and the GPU busy
+fraction fell **95.0% → 50.8%**. That localises the loss **outside GPU execution and no further** — host
+scheduling, driver submission latency, synchronisation, and server slot behaviour all remain live candidates.
+⚠ n=2 in the degraded state: the +5.5% is **not** to be read as a secondary mechanism.
+
+### There is no machine-level topology law
+
+⚠ **"This box has a dual-split decode tax" and "the prefill crossover is at N tokens" are both malformed
+sentences.** Neither is a property of the machine. The crossover above was established for **one** MoE; a
+dense model of comparable size occupies a materially different surface — topology-insensitive on decode
+(**+0.4% / −2.2%** dual→single, against the MoE's **+5.9%**), with its prefill crossover somewhere *below*
+the sampled range.
+
+The correct object is a **model × topology × workload surface**. Any claim of the form "dual-split costs X"
+is incomplete unless it names the model *and* the prompt length. That is a more useful architectural result
+than the headline it replaced, and it is the shape future placement policy should take.
+
+### Still open — recorded, not resolved
+
+- **An unattributed degraded state.** Six episodes in 12.4 hours, then 6.0 hours clean. It **survives a
+  restart** — unlike the idle-cold state — and clears on its own. Placement, thermal, memory spill,
+  co-tenancy and generation length are all excluded by direct measurement. The keep-alive ran throughout, so
+  prolonged idleness is **not** necessary; that was a pre-committed negative result, and an earlier claim that
+  the episodes clustered has been **withdrawn**.
+- **The denominator, not the numerator.** With the five suspect measurements closed and the instrument
+  problems now gated, the dominant weakness in every *work per machine-hour* claim is the work-slice harness
+  that defines the denominator — still unbuilt. Better instruments moved the uncertainty rather than
+  removing it.
+- **A bounded, unrepairable window.** At the time of the provenance audit, **288 of 317** receipts fell in a
+  single epoch whose placement context was never recorded. The policy is to **bound, not repair**: derive only conclusions that hold across every plausible
+  state of that window, mark the rest non-identifiable, and leave them marked. ⚠ Re-running a cell today
+  produces a fact about *today's* machine; it is not a historical correction, and labelling it as one would
+  manufacture provenance.
+
+**What carries over from Round 6.** The finding was never "the hardware is slower than we thought". It is
+that an instrument you decline to interrogate will hand you a number that is internally plausible, well
+documented, and wrong — and that interrogating it costs far less than the claim does. The matrix caught its
+judge. The hardware campaign caught its harness, and then caught *itself*, on the same flag, the day after
+writing the rule against it.
+
 ## Crossover — autoreason bilevel outer loop (PR #2)
 
 [NousResearch/autoreason PR #2](https://github.com/NousResearch/autoreason/pull/2) adds a **deterministic
@@ -251,9 +374,15 @@ idle B70/OMEN and produce the empirical benefit the PR flags as missing ("✗ Em
 
 ## Open threads
 
-- Back the second AM4 critic slot (gguf + launcher) → full 2-AM4-model grid.
+- ~~Back the second AM4 critic slot (gguf + launcher) → full 2-AM4-model grid.~~ **Closed by hardware
+  change** — the B70s moved hosts on 2026-08-20, so this grid is no longer buildable as specified.
 - Bigger sweep for statistical confidence if the 36-cell run is suggestive but not decisive.
 - Fix the knowledge-guard bug blocking catalog/capacity queries during scheduling.
+- **Re-run the matrix on the current single-host rig under R8** — planner, critic and judge served by the same
+  instrument, arms interleaved, keep-alive running. Rounds 1–6 predate all three gates; they are not wrong,
+  but they were not produced under them either.
+- **Build the work-slice harness.** It is the denominator under every *work per machine-hour* claim in the
+  hardware round, and it is the dominant open weakness now that the numerator problems are gated.
 
 ---
 
@@ -261,3 +390,9 @@ idle B70/OMEN and produce the empirical benefit the PR flags as missing ("✗ Em
 `matrix-20260706T052819Z-pilot` (12/12 ok), confirmation sweep `matrix-20260706T063613Z-sweep-r2` (36/36 ok).
 AM4 native Ubuntu, planner co-resident with idle ComfyUI; OMEN `qwen3-coder:30b` as held-out judge across
 rounds. Two-economies doctrine — every lap ran on otherwise-idle electricity.
+
+**Hardware-round provenance:** the suspect-measurement campaign, 2026-08-29 → 08-30, 405 receipts addressed
+by probe + cell. Dual Intel Arc Pro B70 in OMEN under Windows, llama.cpp server; Qwen3-30B-A3B as the
+incumbent, with dense Qwen2.5-32B and Qwen3.8-27B comparators. Every claim above is the **corrected** form from
+the campaign's claim register — where an original headline still appears in older prose, the register's
+version is the citable one. Rules R1–R10 are the campaign's own, written as each was earned.
